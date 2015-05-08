@@ -1,10 +1,12 @@
 package org.scalajs.junit.test
 
-import org.scalajs.junit.framework.ScalaJSJUnitTest
+import org.scalajs.junit.Test
 import org.junit.Assert._
-// import org.junit.Test
+import scala.scalajs.js.annotation.JSExport
+import scala.scalajs.js.annotation.JSExportDescendentClasses
+import scala.util.Try
 
-class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
+class ScalaJSJUnitAnnotationTest extends Test {
 
   // @Test
   def testAssertTrue() = {
@@ -16,8 +18,11 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     assertFalse("'false' did not assertFalse", false)
   }
 
-  override def listTestMethods(): List[ScalaJSJUnitTest.TestMethod] = {
-    return List("testAssertTrue", "testAssertFalse")
+  override def listTestMethods(): List[Test.TestMethod] = {
+    return List(
+        Test.TestMethod("testAssertTrue", () => Try(testAssertTrue())),
+        Test.TestMethod("testAssertFalse", () => Try(testAssertFalse()))
+        )
   }
 
 }
