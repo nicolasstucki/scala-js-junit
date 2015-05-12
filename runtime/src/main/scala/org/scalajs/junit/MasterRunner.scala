@@ -39,7 +39,7 @@ final class MasterRunner(
       throw new IllegalStateException(
           s"$registered task(s) were registered, $done were executed")
     else
-      s"Dummy Test Framework processed $done task(s)"
+      s"Test Framework processed $done task(s)"
   }
 
   private[junit] def taskDone(): Unit = doneCount.incrementAndGet()

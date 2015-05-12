@@ -24,7 +24,7 @@ final class JUnitTask(
       |JUnitTask.execute(eventHandler = $eventHandler, loggers = $loggers)
       |  taskDef = $taskDef
       |  runner = $runner
-    """)
+    """.stripMargin)
 
     val tryInstance = Try(TestUtils.newInstance(taskDef.fullyQualifiedName, runner.testClassLoader)(Seq()))
 
