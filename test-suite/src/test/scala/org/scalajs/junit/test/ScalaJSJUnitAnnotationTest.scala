@@ -6,6 +6,30 @@ import scala.scalajs.js.annotation.JSExport
 import scala.scalajs.js.annotation.JSExportDescendentClasses
 import scala.util.Try
 
+object ScalaJSJUnitAnnotationTest {
+  // @BeforeClass
+  def beforeClassTest1() {
+    println(s"ScalaJSJUnitAnnotationTest.beforeClassTest1()")
+  }
+
+
+  // @BeforeClass
+  def beforeClassTest2() {
+    println(s"ScalaJSJUnitAnnotationTest.beforeClassTest2()")
+  }
+
+  // @AfterClass
+  def afterClassTest1() {
+    println(s"ScalaJSJUnitAnnotationTest.afterClassTest1()")
+  }
+
+
+  // @AfterClass
+  def afterClassTest2() {
+    println(s"ScalaJSJUnitAnnotationTest.afterClassTest2()")
+  }
+}
+
 class ScalaJSJUnitAnnotationTest extends Test {
 
   private val notEquals = false
@@ -21,6 +45,29 @@ class ScalaJSJUnitAnnotationTest extends Test {
           throw assErr
     }
   }
+
+  // @Before
+  def beforeTest1() {
+    println(s"ScalaJSJUnitAnnotationTest.beforeTest1()")
+  }
+
+
+  // @Before
+  def beforeTest2() {
+    println(s"ScalaJSJUnitAnnotationTest.beforeTest2()")
+  }
+
+  // @After
+  def afterTest1() {
+    println(s"ScalaJSJUnitAnnotationTest.afterTest1()")
+  }
+
+
+  // @After
+  def afterTest2() {
+    println(s"ScalaJSJUnitAnnotationTest.afterTest2()")
+  }
+
 
   // @Test
   def testAssertTrueFalse() = {
@@ -269,14 +316,40 @@ class ScalaJSJUnitAnnotationTest extends Test {
 
   }
 
-  override def listTestMethods(): List[Test.TestMethod] = {
-    return List(
-        Test.TestMethod("testAssertTrueFalse", () => Try(testAssertTrueFalse())),
-        Test.TestMethod("testAssertNull", () => Try(testAssertNull())),
-        Test.TestMethod("testAssertSame", () => Try(testAssertSame())),
-        Test.TestMethod("testAssertEquals", () => Try(testAssertEquals())),
-        Test.TestMethod("testAssertArrayEquals", () => Try(testAssertArrayEquals()))
-        )
-  }
 
+  override def getJUnitDefinitions() = {
+    import Test._
+    Clazz(
+        beforeClassMethods =
+          List(
+            BeforeClassMethod("beforeTest1", call(beforeTest1)),
+            BeforeClassMethod("beforeTest2", call(beforeTest2))
+          ),
+        beforeMethods =
+          List(
+        		BeforeMethod("beforeTest1", call(beforeTest1)),
+        	  BeforeMethod("beforeTest2", call(beforeTest2))
+        	),
+        testMethods =
+          List(
+            TestMethod("testAssertTrueFalse", call(testAssertTrueFalse)),
+            TestMethod("testAssertNull", call(testAssertNull)),
+            TestMethod("testAssertSame", call(testAssertSame)),
+            TestMethod("testAssertEquals", call(testAssertEquals)),
+            TestMethod("testAssertArrayEquals", call(testAssertArrayEquals))
+            ),
+        afterMethods =
+          List(
+            AfterMethod("afterTest1", call(afterTest1)),
+            AfterMethod("afterTest2", call(afterTest2))
+          ),
+        afterClassMethods =
+          List(
+        		AfterClassMethod("afterClassTest1", call(ScalaJSJUnitAnnotationTest.afterClassTest1)),
+        		AfterClassMethod("afterClassTest2", call(ScalaJSJUnitAnnotationTest.afterClassTest2))
+          ),
+        timeout = 0
+      )
+  }
 }
+

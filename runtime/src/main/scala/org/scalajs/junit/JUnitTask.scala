@@ -15,7 +15,7 @@ final class JUnitTask(
   def tags: Array[String] = Array.empty
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger],
-              continuation: Array[Task] => Unit): Unit = {
+        continuation: Array[Task] => Unit): Unit = {
     continuation(execute(eventHandler, loggers))
   }
 
@@ -32,20 +32,28 @@ final class JUnitTask(
       case Success(testInstance: Test) =>
 
         println(s"testInstance: testInstance")
-        println(s"listTestMethods: ${testInstance.listTestMethods()}")
+        println(s"listTestMethods: ${testInstance.getJUnitDefinitions()}")
 
-        for(testMethod <- testInstance.listTestMethods()) {
-          println(s"Executing: ${testMethod.name}")
-
-          testMethod.executor() match {
-            case Success(_) =>
-              println(s"Executed: ${testMethod.name}")
-            case Failure(exception) =>
-              println(s"Failed: ${testMethod.name}")
-              exception.printStackTrace()
+        def executeMethods(methods: List[Test.Method]) = {
+          for (method <- methods) {
+            println(s"Executing: ${method.name}")
+            method.invokeTry() match {
+              case Success(_) =>
+                println(s"| Success")
+              case Failure(exception) =>
+                println(s"| Failed: ${exception.getMessage}")
+                exception.printStackTrace()
+            }
           }
-
         }
+
+        val jUnitDeffinition = testInstance.getJUnitDefinitions()
+        executeMethods(jUnitDeffinition.beforeClassMethods)
+        executeMethods(jUnitDeffinition.beforeMethods)
+        executeMethods(jUnitDeffinition.testMethods)
+        executeMethods(jUnitDeffinition.afterMethods)
+        executeMethods(jUnitDeffinition.afterClassMethods)
+
       case Success(_) =>
         // TODO warn, class should be a subclass of org.scalajs.junit.Test
         // if framework works correctly, this case should never happen
