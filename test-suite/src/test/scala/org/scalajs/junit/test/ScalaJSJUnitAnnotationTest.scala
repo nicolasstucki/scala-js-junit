@@ -1,10 +1,14 @@
 package org.scalajs.junit.test
 
-import org.scalajs.junit.Test
+import org.scalajs.junit.ScalaJSJUnitTest
 import org.junit.Assert._
+import org.junit.Assume._
 import scala.scalajs.js.annotation.JSExport
 import scala.scalajs.js.annotation.JSExportDescendentClasses
 import scala.util.Try
+import org.junit.AssumptionViolatedException
+import org.hamcrest.CoreMatchers._
+import org.hamcrest.core.IsNot
 
 object ScalaJSJUnitAnnotationTest {
   // @BeforeClass
@@ -30,19 +34,44 @@ object ScalaJSJUnitAnnotationTest {
   }
 }
 
-class ScalaJSJUnitAnnotationTest extends Test {
+class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
 
   private val notEquals = false
+  private val shallNotPass = false
 
-  def testIfAsserts(assetion: =>Unit, shouldPass: Boolean) {
+  def testIf(code: =>Unit, shouldPass: Boolean, msg: String) {
     try {
-      assetion
+      code
       if(!shouldPass)
-        fail("Should have failed")
+        fail(msg)
     } catch {
       case assErr: AssertionError =>
         if(shouldPass)
           throw assErr
+    }
+  }
+
+  def testIfAsserts(assertion: =>Unit, shouldPass: Boolean = true) {
+    try {
+      assertion
+      if(!shouldPass)
+        fail("Assetrion should have failed")
+    } catch {
+      case assErr: AssertionError =>
+        if(shouldPass)
+          throw assErr
+    }
+  }
+
+  def testIfAssumePass(assumption: =>Unit, shouldPass: Boolean = true) {
+    try {
+      assumption
+      if(!shouldPass)
+        fail("Assumption should have failed")
+    } catch {
+      case assVio: AssumptionViolatedException[_] =>
+        if(shouldPass)
+          throw assVio
     }
   }
 
@@ -71,21 +100,32 @@ class ScalaJSJUnitAnnotationTest extends Test {
 
   // @Test
   def testAssertTrueFalse() = {
-    assertTrue("'true' did not assertTrue", true)
-    assertTrue(true)
+    testIfAsserts(assertTrue("'true' did not assertTrue", true))
+    testIfAsserts(assertTrue(true))
 
-    assertFalse("'false' did not assertFalse", false)
-    assertFalse(false)
+    testIfAsserts(assertFalse("'false' did not assertFalse", false))
+    testIfAsserts(assertFalse(false))
+
+    testIfAsserts(assertTrue("'true' did not assertTrue", false), shallNotPass)
+    testIfAsserts(assertTrue(false), shallNotPass)
+
+    testIfAsserts(assertFalse("'false' did not assertFalse", true), shallNotPass)
+    testIfAsserts(assertFalse(true), shallNotPass)
   }
 
   // @Test
   def testAssertNull() = {
-	  assertNull("'null' did not assertNull", null)
-    assertNull(null)
+	  testIfAsserts(assertNull("'null' did not assertNull", null))
+    testIfAsserts(assertNull(null))
 
-    assertNotNull("'new Object' did not assertFalse", new Object)
-    assertNotNull(new Object)
-    assertNotNull("")
+    testIfAsserts(assertNotNull("'new Object' did not assertNotNull", new Object))
+    testIfAsserts(assertNotNull(new Object))
+
+    testIfAsserts(assertNull("'null' did not assertNull", new Object), shallNotPass)
+    testIfAsserts(assertNull(new Object), shallNotPass)
+
+    testIfAsserts(assertNotNull("'null' did not assertNotNull", null), shallNotPass)
+    testIfAsserts(assertNotNull(null), shallNotPass)
   }
 
   // @Test
@@ -316,9 +356,82 @@ class ScalaJSJUnitAnnotationTest extends Test {
 
   }
 
+  // @Test
+  def testAssertThat() {
+
+    testIfAsserts(assertThat("42", instanceOf("".getClass)))
+    testIfAsserts(assertThat("42", instanceOf(1.getClass)), shallNotPass)
+
+    testIfAsserts(assertThat(42, instanceOf(345453353.getClass)))
+    testIfAsserts(assertThat(42, instanceOf(1L.getClass)), shallNotPass)
+    testIfAsserts(assertThat(42, instanceOf("".getClass)), shallNotPass)
+
+    testIfAsserts(assertThat(Float.MaxValue, instanceOf(0f.getClass)))
+    testIfAsserts(assertThat(Double.MaxValue, instanceOf(0d.getClass)))
+
+    testIfAsserts(assertThat(0, instanceOf(0d.getClass)))
+
+  }
+
+  // @Test
+  def testAssumeTrue() {
+    testIfAssumePass(assumeTrue("true be assumed to be true", true))
+    testIfAssumePass(assumeTrue(true))
+    testIfAssumePass(assumeTrue("false be assumed to be true", false), shallNotPass)
+    testIfAssumePass(assumeTrue( false), shallNotPass)
+
+    testIfAssumePass(assumeFalse("false be assumed to be false", false))
+    testIfAssumePass(assumeFalse(false))
+    testIfAssumePass(assumeFalse("true be assumed to be false", true), shallNotPass)
+    testIfAssumePass(assumeFalse(true), shallNotPass)
+
+  }
+
+  // @Test
+  def testAssumeNotNull() {
+    testIfAssumePass(assumeNotNull())
+    testIfAssumePass(assumeNotNull(new Object))
+    testIfAssumePass(assumeNotNull("", new Object, " "))
+
+    testIfAssumePass(assumeNotNull(null), shallNotPass)
+    testIfAssumePass(assumeNotNull(new Object, null), shallNotPass)
+    testIfAssumePass(assumeNotNull(null, new Object), shallNotPass)
+  }
+
+  // @Test
+  def testAssumeThat() {
+    testIfAssumePass(assumeThat(null, nullValue()))
+    testIfAssumePass(assumeThat(null, notNullValue()), shallNotPass)
+
+    testIfAssumePass(assumeThat(new Object, notNullValue()))
+    testIfAssumePass(assumeThat(new Object, nullValue()), shallNotPass)
+
+    testIfAssumePass(assumeThat(new Object, notNullValue("".getClass)))
+
+    testIfAssumePass(assumeThat(1, is(1)))
+    testIfAssumePass(assumeThat(1, is(2)), shallNotPass)
+
+    testIfAssumePass(assumeThat(1, not(is(2))))
+    testIfAssumePass(assumeThat(1, not(is(1))), shallNotPass)
+
+    testIfAssumePass(assumeThat(1, is(not(2))))
+    testIfAssumePass(assumeThat(1, is(not(1))), shallNotPass)
+
+    testIfAssumePass(assumeThat(1, not(2)))
+    testIfAssumePass(assumeThat(1, not(1)), shallNotPass)
+  }
+
+  // @Test
+  def testAssumesNoException() {
+    testIfAssumePass(assumeNoException("assumeNoException(null) should succeed", null))
+    testIfAssumePass(assumeNoException(null))
+
+    testIfAssumePass(assumeNoException("assumeNoException(new Throwable) should succeed", new Throwable), shallNotPass)
+    testIfAssumePass(assumeNoException(new Throwable), shallNotPass)
+  }
 
   override def getJUnitDefinitions() = {
-    import Test._
+    import ScalaJSJUnitTest._
     Clazz(
         beforeClassMethods =
           List(
@@ -336,7 +449,12 @@ class ScalaJSJUnitAnnotationTest extends Test {
             TestMethod("testAssertNull", call(testAssertNull)),
             TestMethod("testAssertSame", call(testAssertSame)),
             TestMethod("testAssertEquals", call(testAssertEquals)),
-            TestMethod("testAssertArrayEquals", call(testAssertArrayEquals))
+            TestMethod("testAssertArrayEquals", call(testAssertArrayEquals)),
+            TestMethod("testAssertThat", call(testAssertThat)),
+            TestMethod("testAssumeTrue", call(testAssumeTrue)),
+            TestMethod("testAssumeNotNull", call(testAssumeNotNull)),
+            TestMethod("testAssumeThat", call(testAssumeThat)),
+            TestMethod("testAssumesNoException", call(testAssumesNoException))
             ),
         afterMethods =
           List(

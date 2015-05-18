@@ -8,7 +8,7 @@ final class JUnitFramework extends Framework {
 
   private object JUnitFingerprint extends SubclassFingerprint {
     val isModule: Boolean = false
-    val superclassName: String = "org.scalajs.junit.Test"
+    val superclassName: String = "org.scalajs.junit.ScalaJSJUnitTest"
     val requireNoArgConstructor: Boolean = true
   }
 

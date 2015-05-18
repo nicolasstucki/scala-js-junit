@@ -4,14 +4,15 @@ import scala.scalajs.js.annotation.JSExportDescendentClasses
 import scala.util.Try
 
 @JSExportDescendentClasses
-trait Test {
+trait ScalaJSJUnitTest {
   /**
    * List of all test methods in the class
    */
-  def getJUnitDefinitions(): Test.Clazz = Test.Clazz()
+  def getJUnitDefinitions(): ScalaJSJUnitTest.Clazz =
+    ScalaJSJUnitTest.Clazz()
 }
 
-object Test {
+object ScalaJSJUnitTest {
 
   @inline
   final def call(methodInvokation: =>Unit): MethodCaller = {

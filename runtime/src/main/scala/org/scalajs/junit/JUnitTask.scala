@@ -29,12 +29,12 @@ final class JUnitTask(
     val tryInstance = Try(TestUtils.newInstance(taskDef.fullyQualifiedName, runner.testClassLoader)(Seq()))
 
     tryInstance match {
-      case Success(testInstance: Test) =>
+      case Success(testInstance: ScalaJSJUnitTest) =>
 
         println(s"testInstance: testInstance")
         println(s"listTestMethods: ${testInstance.getJUnitDefinitions()}")
 
-        def executeMethods(methods: List[Test.Method]) = {
+        def executeMethods(methods: List[ScalaJSJUnitTest.Method]) = {
           for (method <- methods) {
             println(s"Executing: ${method.name}")
             method.invokeTry() match {

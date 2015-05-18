@@ -21,7 +21,7 @@ package org.hamcrest;
  *
  * @see BaseMatcher
  */
-trait Matcher[T<:AnyRef] extends SelfDescribing {
+trait Matcher[+T] extends SelfDescribing {
 
     /**
      * Evaluates the matcher for argument <var>item</var>.
@@ -51,15 +51,15 @@ trait Matcher[T<:AnyRef] extends SelfDescribing {
      */
     def describeMismatch(item: AnyRef, mismatchDescription: Description): Unit
 
-    /**
-     * This method simply acts a friendly reminder not to implement Matcher directly and
-     * instead extend BaseMatcher. It's easy to ignore JavaDoc, but a bit harder to ignore
-     * compile errors .
-     *
-     * @see Matcher for reasons why.
-     * @see BaseMatcher
-     * @deprecated to make
-     */
-    @deprecated
-    def _dont_implement_Matcher___instead_extend_BaseMatcher_(): Unit
+//    /**
+//     * This method simply acts a friendly reminder not to implement Matcher directly and
+//     * instead extend BaseMatcher. It's easy to ignore JavaDoc, but a bit harder to ignore
+//     * compile errors .
+//     *
+//     * @see Matcher for reasons why.
+//     * @see BaseMatcher
+//     * @deprecated to make
+//     */
+//    @deprecated
+//    def _dont_implement_Matcher___instead_extend_BaseMatcher_(): Unit
 }

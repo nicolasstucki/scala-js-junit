@@ -589,25 +589,25 @@ object Assert {
       failNotEquals(message, java.lang.Long.valueOf(expected), java.lang.Long.valueOf(actual))
   }
 
-  /**
-   * @deprecated Use
-   *             <code>assertEquals(double expected, double actual, delta: Double)</code>
-   *             instead
-   */
-  @deprecated
-  def assertEquals(expected: Double, actual: Double) {
-    assertEquals(null, expected, actual)
-  }
-
-  /**
-   * @deprecated Use
-   *             <code>assertEquals(message: String, double expected, double actual, delta: Double)</code>
-   *             instead
-   */
-  @deprecated
-  def assertEquals(message: String, expected: Double, actual: Double) {
-    fail("Use assertEquals(expected, actual, delta) to compare floating-point numbers")
-  }
+//  /**
+//   * @deprecated Use
+//   *             <code>assertEquals(double expected, double actual, delta: Double)</code>
+//   *             instead
+//   */
+//  @deprecated
+//  def assertEquals(expected: Double, actual: Double) {
+//    assertEquals(null, expected, actual)
+//  }
+//
+//  /**
+//   * @deprecated Use
+//   *             <code>assertEquals(message: String, double expected, double actual, delta: Double)</code>
+//   *             instead
+//   */
+//  @deprecated
+//  def assertEquals(message: String, expected: Double, actual: Double) {
+//    fail("Use assertEquals(expected, actual, delta) to compare floating-point numbers")
+//  }
 
   /**
    * Asserts that two doubles are equal to within a positive delta.
@@ -780,41 +780,41 @@ object Assert {
     return s"$className<$valueString>"
   }
 
-  /**
-   * Asserts that two object arrays are equal. If they are not, an
-   * {@link AssertionError} is thrown with the given message. If
-   * <code>expecteds</code> and <code>actuals</code> are <code>null</code>,
-   * they are considered equal.
-   *
-   * @param message the identifying message for the {@link AssertionError} (<code>null</code>
-   * okay)
-   * @param expecteds Object array or array of arrays (multi-dimensional array) with
-   * expected values.
-   * @param actuals Object array or array of arrays (multi-dimensional array) with
-   * actual values
-   * @deprecated use assertArrayEquals
-   */
-  @deprecated
-  def assertEquals(message: String, expecteds: Array[AnyRef], actuals: Array[AnyRef]) {
-    assertArrayEquals(message, expecteds, actuals)
-  }
-
-  /**
-   * Asserts that two object arrays are equal. If they are not, an
-   * {@link AssertionError} is thrown. If <code>expected</code> and
-   * <code>actual</code> are <code>null</code>, they are considered
-   * equal.
-   *
-   * @param expecteds Object array or array of arrays (multi-dimensional array) with
-   * expected values
-   * @param actuals Object array or array of arrays (multi-dimensional array) with
-   * actual values
-   * @deprecated use assertArrayEquals
-   */
-  @deprecated
-  def assertEquals(expecteds: Array[AnyRef], actuals: Array[AnyRef]) {
-    assertArrayEquals(expecteds, actuals)
-  }
+//  /**
+//   * Asserts that two object arrays are equal. If they are not, an
+//   * {@link AssertionError} is thrown with the given message. If
+//   * <code>expecteds</code> and <code>actuals</code> are <code>null</code>,
+//   * they are considered equal.
+//   *
+//   * @param message the identifying message for the {@link AssertionError} (<code>null</code>
+//   * okay)
+//   * @param expecteds Object array or array of arrays (multi-dimensional array) with
+//   * expected values.
+//   * @param actuals Object array or array of arrays (multi-dimensional array) with
+//   * actual values
+//   * @deprecated use assertArrayEquals
+//   */
+//  @deprecated
+//  def assertEquals(message: String, expecteds: Array[AnyRef], actuals: Array[AnyRef]) {
+//    assertArrayEquals(message, expecteds, actuals)
+//  }
+//
+//  /**
+//   * Asserts that two object arrays are equal. If they are not, an
+//   * {@link AssertionError} is thrown. If <code>expected</code> and
+//   * <code>actual</code> are <code>null</code>, they are considered
+//   * equal.
+//   *
+//   * @param expecteds Object array or array of arrays (multi-dimensional array) with
+//   * expected values
+//   * @param actuals Object array or array of arrays (multi-dimensional array) with
+//   * actual values
+//   * @deprecated use assertArrayEquals
+//   */
+//  @deprecated
+//  def assertEquals(expecteds: Array[AnyRef], actuals: Array[AnyRef]) {
+//    assertArrayEquals(expecteds, actuals)
+//  }
 
   /**
    * Asserts that <code>actual</code> satisfies the condition specified by
@@ -842,7 +842,7 @@ object Assert {
    * @see org.hamcrest.CoreMatchers
    * @see org.hamcrest.MatcherAssert
    */
-  def assertThat[T<:AnyRef](actual: T, matcher: Matcher[T]) {
+  def assertThat[T](actual: T, matcher: Matcher[T]) {
     assertThat("", actual, matcher)
   }
 
@@ -874,7 +874,7 @@ object Assert {
    * @see org.hamcrest.CoreMatchers
    * @see org.hamcrest.MatcherAssert
    */
-  def assertThat[T<:AnyRef](reason: String, actual: T, matcher: Matcher[T]) {
+  def assertThat[T](reason: String, actual: T, matcher: Matcher[T]) {
     MatcherAssert.assertThat(reason, actual, matcher);
   }
 
