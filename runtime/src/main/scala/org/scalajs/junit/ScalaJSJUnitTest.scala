@@ -15,20 +15,20 @@ trait ScalaJSJUnitTest {
 object ScalaJSJUnitTest {
 
   @inline
-  final def call(methodInvokation: =>Unit): MethodCaller = {
-    () => Try(methodInvokation)
+  final def call(methodInvocation: => Unit): MethodCaller = {
+    () => Try(methodInvocation)
   }
 
-  final type MethodCaller = Function0[Try[Unit]]
+  final type MethodCaller = () => Try[Unit]
 
   final case class Clazz(
-      beforeClassMethods: List[BeforeClassMethod] = Nil,
-      beforeMethods: List[BeforeMethod] = Nil,
-      testMethods: List[TestMethod] = Nil,
-      afterMethods: List[AfterMethod] = Nil,
-      afterClassMethods: List[AfterClassMethod] = Nil,
-      timeout: Long = 0L,
-      extendedClasses: List[Clazz] = Nil
+    beforeClassMethods: List[BeforeClassMethod] = Nil,
+    beforeMethods: List[BeforeMethod] = Nil,
+    testMethods: List[TestMethod] = Nil,
+    afterMethods: List[AfterMethod] = Nil,
+    afterClassMethods: List[AfterClassMethod] = Nil,
+    timeout: Long = 0L,
+    extendedClasses: List[Clazz] = Nil
   ) {
 
   }
@@ -42,6 +42,5 @@ object ScalaJSJUnitTest {
   case class TestMethod(name: String, invokeTry: MethodCaller) extends Method
   case class AfterMethod(name: String, invokeTry: MethodCaller) extends Method
   case class AfterClassMethod(name: String, invokeTry: MethodCaller) extends Method
-
 
 }

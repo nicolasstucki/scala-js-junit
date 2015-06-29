@@ -3,6 +3,8 @@
 *.project
 *.settings
 *.classpath
+*.xml
+*.iml
 
 # sbt specific
 .cache

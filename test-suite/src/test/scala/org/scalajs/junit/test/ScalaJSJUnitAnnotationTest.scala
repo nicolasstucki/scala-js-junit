@@ -1,5 +1,7 @@
 package org.scalajs.junit.test
 
+import org.junit._
+
 import org.scalajs.junit.ScalaJSJUnitTest
 import org.junit.Assert._
 import org.junit.Assume._
@@ -11,24 +13,24 @@ import org.hamcrest.CoreMatchers._
 import org.hamcrest.core.IsNot
 
 object ScalaJSJUnitAnnotationTest {
-  // @BeforeClass
+  @BeforeClass
   def beforeClassTest1() {
     println(s"ScalaJSJUnitAnnotationTest.beforeClassTest1()")
   }
 
 
-  // @BeforeClass
+  @BeforeClass
   def beforeClassTest2() {
     println(s"ScalaJSJUnitAnnotationTest.beforeClassTest2()")
   }
 
-  // @AfterClass
+  @AfterClass
   def afterClassTest1() {
     println(s"ScalaJSJUnitAnnotationTest.afterClassTest1()")
   }
 
 
-  // @AfterClass
+  @AfterClass
   def afterClassTest2() {
     println(s"ScalaJSJUnitAnnotationTest.afterClassTest2()")
   }
@@ -75,30 +77,30 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     }
   }
 
-  // @Before
+  @Before
   def beforeTest1() {
     println(s"ScalaJSJUnitAnnotationTest.beforeTest1()")
   }
 
 
-  // @Before
+  @Before
   def beforeTest2() {
     println(s"ScalaJSJUnitAnnotationTest.beforeTest2()")
   }
 
-  // @After
+  @After
   def afterTest1() {
     println(s"ScalaJSJUnitAnnotationTest.afterTest1()")
   }
 
 
-  // @After
+  @After
   def afterTest2() {
     println(s"ScalaJSJUnitAnnotationTest.afterTest2()")
   }
 
 
-  // @Test
+  @Test
   def testAssertTrueFalse() = {
     testIfAsserts(assertTrue("'true' did not assertTrue", true))
     testIfAsserts(assertTrue(true))
@@ -113,7 +115,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testIfAsserts(assertFalse(true), shallNotPass)
   }
 
-  // @Test
+  @Test
   def testAssertNull() = {
 	  testIfAsserts(assertNull("'null' did not assertNull", null))
     testIfAsserts(assertNull(null))
@@ -128,7 +130,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testIfAsserts(assertNotNull(null), shallNotPass)
   }
 
-  // @Test
+  @Test
   def testAssertSame() = {
     // Setup
     val obj = new Object()
@@ -136,9 +138,9 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     val nullRef: AnyRef = null
 
     def testAssertion(expected: AnyRef, actual: AnyRef, equals: Boolean = true) {
-      testIfAsserts(assertSame("Refferences where not equal", expected, actual), equals)
+      testIfAsserts(assertSame("References where not equal", expected, actual), equals)
       testIfAsserts(assertSame(expected, actual), equals)
-      testIfAsserts(assertNotSame("Refferences where equal", expected, actual), !equals)
+      testIfAsserts(assertNotSame("References where equal", expected, actual), !equals)
       testIfAsserts(assertNotSame(expected, actual), !equals)
     }
 
@@ -150,7 +152,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testAssertion(new Object, new Object, notEquals)
   }
 
-  // @Test
+  @Test
   def testAssertEquals() = {
 
     // Setup
@@ -302,7 +304,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
 
   }
 
-  // @Test
+  @Test
   def testAssertArrayEquals() {
     // setup
     val (obj1, obj2) = ("0", "1")
@@ -356,7 +358,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
 
   }
 
-  // @Test
+  @Test
   def testAssertThat() {
 
     testIfAsserts(assertThat("42", instanceOf("".getClass)))
@@ -373,7 +375,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
 
   }
 
-  // @Test
+  @Test
   def testAssumeTrue() {
     testIfAssumePass(assumeTrue("true be assumed to be true", true))
     testIfAssumePass(assumeTrue(true))
@@ -387,7 +389,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
 
   }
 
-  // @Test
+  @Test
   def testAssumeNotNull() {
     testIfAssumePass(assumeNotNull())
     testIfAssumePass(assumeNotNull(new Object))
@@ -398,7 +400,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testIfAssumePass(assumeNotNull(null, new Object), shallNotPass)
   }
 
-  // @Test
+  @Test
   def testAssumeThat() {
     testIfAssumePass(assumeThat(null, nullValue()))
     testIfAssumePass(assumeThat(null, notNullValue()), shallNotPass)
@@ -421,7 +423,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testIfAssumePass(assumeThat(1, not(1)), shallNotPass)
   }
 
-  // @Test
+  @Test
   def testAssumesNoException() {
     testIfAssumePass(assumeNoException("assumeNoException(null) should succeed", null))
     testIfAssumePass(assumeNoException(null))
