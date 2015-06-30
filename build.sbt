@@ -13,13 +13,18 @@ lazy val `scalajs-junit` = project.in(file("runtime")).
     libraryDependencies += "org.scala-js" %% "scalajs-test-interface" % scalaJSVersion
   )
 
+lazy val `scalajs-junit-plugin` = project.in(file("junit-plugin")).
+  settings(commonSettings: _*).
+  settings(
+    name := "Scala.js JUnit plugin",
+    libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
+    exportJars := true
+  ).dependsOn(`scalajs-junit`)
+
 lazy val testSuite = project.in(file("test-suite")).
   enablePlugins(ScalaJSPlugin).
   settings(commonSettings: _*).
   settings(
     name := "Scala.js JUnit test",
     testFrameworks += new TestFramework("org.scalajs.junit.JUnitFramework")
-  ).
-  
-  dependsOn(`scalajs-junit` % "test")
-
+  ).dependsOn(`scalajs-junit` % "test", `scalajs-junit-plugin` % "plugin")

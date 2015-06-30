@@ -3,15 +3,6 @@ package org.scalajs.junit
 import scala.scalajs.js.annotation.JSExportDescendentClasses
 import scala.util.Try
 
-@JSExportDescendentClasses
-trait ScalaJSJUnitTest {
-  /**
-   * List of all test methods in the class
-   */
-  def getJUnitDefinitions(): ScalaJSJUnitTest.Clazz =
-    ScalaJSJUnitTest.Clazz()
-}
-
 object ScalaJSJUnitTest {
 
   @inline
@@ -43,4 +34,13 @@ object ScalaJSJUnitTest {
   case class AfterMethod(name: String, invokeTry: MethodCaller) extends Method
   case class AfterClassMethod(name: String, invokeTry: MethodCaller) extends Method
 
+}
+
+@JSExportDescendentClasses
+trait ScalaJSJUnitTest {
+  /**
+   * List of all test methods in the class
+   */
+  def getJUnitDefinitions(): ScalaJSJUnitTest.Clazz =
+    ScalaJSJUnitTest.Clazz()
 }
