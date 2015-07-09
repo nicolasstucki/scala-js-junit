@@ -2,22 +2,20 @@ package org.scalajs.junit.test
 
 import org.junit._
 
-import org.scalajs.junit.ScalaJSJUnitTest
 import org.junit.Assert._
 import org.junit.Assume._
-import scala.scalajs.js.annotation.JSExport
-import scala.scalajs.js.annotation.JSExportDescendentClasses
-import scala.util.Try
+import org.junit.runners.MethodSorters
+import org.scalajs.junit._
 import org.junit.AssumptionViolatedException
 import org.hamcrest.CoreMatchers._
-import org.hamcrest.core.IsNot
 
-object ScalaJSJUnitAnnotationTest {
+import scala.scalajs.js.annotation.JSExport
+
+object ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
   @BeforeClass
   def beforeClassTest1() {
     println(s"ScalaJSJUnitAnnotationTest.beforeClassTest1()")
   }
-
 
   @BeforeClass
   def beforeClassTest2() {
@@ -29,13 +27,34 @@ object ScalaJSJUnitAnnotationTest {
     println(s"ScalaJSJUnitAnnotationTest.afterClassTest1()")
   }
 
-
   @AfterClass
   def afterClassTest2() {
     println(s"ScalaJSJUnitAnnotationTest.afterClassTest2()")
   }
+
+  def invokeJUnitMethod$ (methodId: String): Unit = {
+    if (methodId == "0") beforeClassTest1()
+    else if (methodId == "1") beforeClassTest2()
+    else if (methodId == "2") afterClassTest1()
+    else if (methodId == "3") afterClassTest2()
+    else throw new NoSuchMethodException()
+  }
+
+  def getJUnitMetadata$ (): TestClass = {
+    TestClass(
+      List(),
+      List(
+        AnnotatedMethod("beforeClassTest1", "0", List(new BeforeClass)),
+        AnnotatedMethod("beforeClassTest2", "1", List(new BeforeClass)),
+        AnnotatedMethod("afterClassTest1", "2", List(new AfterClass)),
+        AnnotatedMethod("afterClassTest2", "3", List(new AfterClass)))
+    )
+  }
+
+  override def toString: String = "MODULE FOUND"
 }
 
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
 
   private val notEquals = false
@@ -57,7 +76,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     try {
       assertion
       if(!shouldPass)
-        fail("Assetrion should have failed")
+        fail("Assertion should have failed")
     } catch {
       case assErr: AssertionError =>
         if(shouldPass)
@@ -99,19 +118,18 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     println(s"ScalaJSJUnitAnnotationTest.afterTest2()")
   }
 
-
   @Test
   def testAssertTrueFalse() = {
-    testIfAsserts(assertTrue("'true' did not assertTrue", true))
+    testIfAsserts(assertTrue("'true' did not assertTrue", condition = true))
     testIfAsserts(assertTrue(true))
 
-    testIfAsserts(assertFalse("'false' did not assertFalse", false))
+    testIfAsserts(assertFalse("'false' did not assertFalse", condition = false))
     testIfAsserts(assertFalse(false))
 
-    testIfAsserts(assertTrue("'true' did not assertTrue", false), shallNotPass)
+    testIfAsserts(assertTrue("'true' did not assertTrue", condition = false), shallNotPass)
     testIfAsserts(assertTrue(false), shallNotPass)
 
-    testIfAsserts(assertFalse("'false' did not assertFalse", true), shallNotPass)
+    testIfAsserts(assertFalse("'false' did not assertFalse", condition = true), shallNotPass)
     testIfAsserts(assertFalse(true), shallNotPass)
   }
 
@@ -160,7 +178,6 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     val str = "abcd"
     val nullRef: AnyRef = null
 
-
     // Object equality tests
     def testAssertion(expected: AnyRef, actual: AnyRef, equals: Boolean = true) {
       testIfAsserts(assertEquals(s"Asserting $expected == $actual", expected, actual), equals)
@@ -190,7 +207,6 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testAssertion(List(1L, 2L, 3L), List(1L, 2L, 4L), notEquals)
     testAssertion(Vector(1L, 2L, 3L), List(1L, 2L, 4L), notEquals)
     testAssertion((1, 2, 3), (1, 2, 4), notEquals)
-
 
     // Byte equality tests
     def testByteAssertion(expected: Byte, actual: Byte, equals: Boolean = true) {
@@ -222,7 +238,6 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testCharAssertion('a', '@', notEquals)
     testCharAssertion('a', '\n', notEquals)
 
-
     // Short equality tests
     def testShortAssertion(expected: Short, actual: Short, equals: Boolean = true) {
       testIfAsserts(assertEquals(s"Asserting $expected == $actual", expected, actual), equals)
@@ -236,7 +251,6 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testShortAssertion(Short.MinValue, Short.MinValue)
     testShortAssertion(Short.MaxValue, Short.MaxValue)
     testShortAssertion(1, 2, notEquals)
-
 
     // Int equality tests
     def testIntAssertion(expected: Int, actual: Int, equals: Boolean = true) {
@@ -253,7 +267,6 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testIntAssertion(Int.MaxValue, Int.MaxValue)
     testIntAssertion(1, 2, notEquals)
 
-
     // Long equality tests
     def testLongAssertion(expected: Long, actual: Long, equals: Boolean = true) {
       testIfAsserts(assertEquals(s"Asserting $expected == $actual", expected, actual), equals)
@@ -268,7 +281,6 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testLongAssertion(Long.MinValue, Long.MinValue)
     testLongAssertion(Long.MaxValue, Long.MaxValue)
     testLongAssertion(1L, 2L, notEquals)
-
 
     // Double equality tests
     def testDoubleAssertion(expected: Double, actual: Double, delta: Double, equals: Boolean = true) {
@@ -353,8 +365,8 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testDoubleAssertion(Array(1d, 2d, 3d), Array(1d, 2d, 3.5d), 1d)
 
     // Array[Float]
-    testDoubleAssertion(Array(1f, 2f, 3f), Array(1f, 2f, 4f), 1f)
-    testDoubleAssertion(Array(1f, 2f, 3f), Array(1f, 2f, 3.5f), 1f)
+    testFloatAssertion(Array(1f, 2f, 3f), Array(1f, 2f, 4f), 1f)
+    testFloatAssertion(Array(1f, 2f, 3f), Array(1f, 2f, 3.5f), 1f)
 
   }
 
@@ -377,14 +389,14 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
 
   @Test
   def testAssumeTrue() {
-    testIfAssumePass(assumeTrue("true be assumed to be true", true))
+    testIfAssumePass(assumeTrue("true be assumed to be true", b = true))
     testIfAssumePass(assumeTrue(true))
-    testIfAssumePass(assumeTrue("false be assumed to be true", false), shallNotPass)
+    testIfAssumePass(assumeTrue("false be assumed to be true", b = false), shallNotPass)
     testIfAssumePass(assumeTrue( false), shallNotPass)
 
-    testIfAssumePass(assumeFalse("false be assumed to be false", false))
+    testIfAssumePass(assumeFalse("false be assumed to be false", b = false))
     testIfAssumePass(assumeFalse(false))
-    testIfAssumePass(assumeFalse("true be assumed to be false", true), shallNotPass)
+    testIfAssumePass(assumeFalse("true be assumed to be false", b = true), shallNotPass)
     testIfAssumePass(assumeFalse(true), shallNotPass)
 
   }
@@ -424,7 +436,7 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
   }
 
   @Test
-  def testAssumesNoException() {
+  def testAssumesNoException(): Unit = {
     testIfAssumePass(assumeNoException("assumeNoException(null) should succeed", null))
     testIfAssumePass(assumeNoException(null))
 
@@ -432,44 +444,46 @@ class ScalaJSJUnitAnnotationTest extends ScalaJSJUnitTest {
     testIfAssumePass(assumeNoException(new Throwable), shallNotPass)
   }
 
-  override def getJUnitDefinitions() = {
-    import ScalaJSJUnitTest._
-    Clazz(
-        beforeClassMethods =
-          List(
-            BeforeClassMethod("beforeTest1", call(beforeTest1)),
-            BeforeClassMethod("beforeTest2", call(beforeTest2))
-          ),
-        beforeMethods =
-          List(
-        		BeforeMethod("beforeTest1", call(beforeTest1)),
-        	  BeforeMethod("beforeTest2", call(beforeTest2))
-        	),
-        testMethods =
-          List(
-            TestMethod("testAssertTrueFalse", call(testAssertTrueFalse)),
-            TestMethod("testAssertNull", call(testAssertNull)),
-            TestMethod("testAssertSame", call(testAssertSame)),
-            TestMethod("testAssertEquals", call(testAssertEquals)),
-            TestMethod("testAssertArrayEquals", call(testAssertArrayEquals)),
-            TestMethod("testAssertThat", call(testAssertThat)),
-            TestMethod("testAssumeTrue", call(testAssumeTrue)),
-            TestMethod("testAssumeNotNull", call(testAssumeNotNull)),
-            TestMethod("testAssumeThat", call(testAssumeThat)),
-            TestMethod("testAssumesNoException", call(testAssumesNoException))
-            ),
-        afterMethods =
-          List(
-            AfterMethod("afterTest1", call(afterTest1)),
-            AfterMethod("afterTest2", call(afterTest2))
-          ),
-        afterClassMethods =
-          List(
-        		AfterClassMethod("afterClassTest1", call(ScalaJSJUnitAnnotationTest.afterClassTest1)),
-        		AfterClassMethod("afterClassTest2", call(ScalaJSJUnitAnnotationTest.afterClassTest2))
-          ),
-        timeout = 0
+  @Ignore
+  @Test
+  def testIgnore0(): Unit = { }
+
+  @Ignore("Ignore message")
+  @Test
+  def testIgnore1(): Unit = { }
+
+  @JSExport
+  def exportedMethod: Unit = { }
+
+  def invokeJUnitMethod$ (methodId: String): Unit = {
+    if (methodId == "0") beforeTest1()
+    else if (methodId == "1") beforeTest2()
+    else if (methodId == "2") testAssertTrueFalse()
+    else if (methodId == "3") testAssertThat()
+    else if (methodId == "4") afterTest1()
+    else if (methodId == "5") afterTest2()
+    else if (methodId == "6") testIgnore0()
+    else if (methodId == "7") testIgnore1()
+    else if (methodId == "8") testAssertEquals()
+    else if (methodId == "9") testAssertNull()
+    else throw new NoSuchMethodException()
+  }
+
+  def getJUnitMetadata$ (): TestClass = {
+    TestClass(
+      List(new FixMethodOrder(MethodSorters.NAME_ASCENDING)),
+      List(
+        AnnotatedMethod("beforeTest1", "0", List(new Before)),
+        AnnotatedMethod("beforeTest2", "1", List(new Before)),
+        AnnotatedMethod("testAssertTrueFalse", "2", List(new Test)),
+        AnnotatedMethod("testAssertThat", "3", List(new Test)),
+        AnnotatedMethod("afterTest1", "4", List(new After)),
+        AnnotatedMethod("afterTest2", "5", List(new After)),
+        AnnotatedMethod("testIgnore0", "6", List(new Test, new Ignore)),
+        AnnotatedMethod("testIgnore1", "7", List(new Test, new Ignore("Ignore message"))),
+        AnnotatedMethod("testAssertEquals", "8", List(new Test)),
+        AnnotatedMethod("testAssertNull", "9", List(new Test))
       )
+    )
   }
 }
-

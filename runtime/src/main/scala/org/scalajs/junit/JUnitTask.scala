@@ -26,39 +26,62 @@ final class JUnitTask(
       |  runner = $runner
     """.stripMargin)
 
+    println(taskDef.fullyQualifiedName)
     val tryInstance = Try(TestUtils.newInstance(taskDef.fullyQualifiedName, runner.testClassLoader)(Seq()))
+    // Fixme: Not loading module
+    val moduleOption: Option[ScalaJSJUnitTest] = Some(TestUtils.loadModule(taskDef.fullyQualifiedName, runner.testClassLoader)).collect {
+      case module: ScalaJSJUnitTest => module
+    }
 
     tryInstance match {
       case Success(testInstance: ScalaJSJUnitTest) =>
 
-        println(s"testInstance: testInstance")
-        println(s"listTestMethods: ${testInstance.getJUnitDefinitions()}")
+        println(s"testInstance: ${testInstance.getJUnitMetadata$}")
 
-        def executeMethods(methods: List[ScalaJSJUnitTest.Method]) = {
+        def executeMethods(methods: List[AnnotatedMethod], invokeJUnitMethod: String => Unit) = {
           for (method <- methods) {
-            println(s"Executing: ${method.name}")
-            method.invokeTry() match {
-              case Success(_) =>
-                println(s"| Success")
-              case Failure(exception) =>
-                println(s"| Failed: ${exception.getMessage}")
-                exception.printStackTrace()
+            method.getIgnoreAnnotation match {
+              case Some(ign) =>
+                println(s"Ignoring: ${method.name}")
+                if (ign.value != "")
+                  println(s"   cause: ${ign.value}")
+
+              case None =>
+                println(s"Executing: ${method.name}")
+                Try (invokeJUnitMethod(method.id)) match {
+                  case Success (_) =>
+                    println (s"| Success")
+                  case Failure (exception) =>
+                    println (s"| Failed: ${exception.getMessage}")
+                    exception.printStackTrace ()
+                }
             }
           }
         }
 
-        val jUnitDeffinition = testInstance.getJUnitDefinitions()
-        executeMethods(jUnitDeffinition.beforeClassMethods)
-        executeMethods(jUnitDeffinition.beforeMethods)
-        executeMethods(jUnitDeffinition.testMethods)
-        executeMethods(jUnitDeffinition.afterMethods)
-        executeMethods(jUnitDeffinition.afterClassMethods)
+        val jUnitMetadata = testInstance.getJUnitMetadata$()
+        val jUnitModuleMetadataOption = moduleOption.map(_.getJUnitMetadata$())
+
+        jUnitModuleMetadataOption match {
+          case Some(jUnitModuleMetadata) =>
+            executeMethods(jUnitModuleMetadata.beforeClassMethods, moduleOption.get.invokeJUnitMethod$)
+          case None =>
+        }
+        executeMethods(jUnitMetadata.beforeMethods, testInstance.invokeJUnitMethod$)
+        executeMethods(jUnitMetadata.testMethods, testInstance.invokeJUnitMethod$)
+        executeMethods(jUnitMetadata.afterMethods, testInstance.invokeJUnitMethod$)
+        jUnitModuleMetadataOption match {
+          case Some(jUnitModuleMetadata) =>
+            executeMethods(jUnitModuleMetadata.afterClassMethods, moduleOption.get.invokeJUnitMethod$)
+          case None =>
+        }
 
       case Success(_) =>
         // TODO warn, class should be a subclass of org.scalajs.junit.Test
-        // if framework works correctly, this case should never happen
+        // if framework works correctly, this case should never happend
       case Failure(exception) =>
         // TODO
+        println(exception)
     }
 
     runner.taskDone()
