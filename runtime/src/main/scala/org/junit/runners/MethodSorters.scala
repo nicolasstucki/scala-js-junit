@@ -1,6 +1,5 @@
 package org.junit.runners
 
-
 object MethodSorters {
   object NAME_ASCENDING extends MethodSorters {
     val comparator: Ordering[String] = {

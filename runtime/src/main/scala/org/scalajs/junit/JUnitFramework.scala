@@ -6,10 +6,18 @@ final class JUnitFramework extends Framework {
 
   val name: String = "Scala.JS JUnit test framework"
 
-  private object JUnitFingerprint extends SubclassFingerprint {
-    val isModule: Boolean = false
-    val superclassName: String = "org.scalajs.junit.ScalaJSJUnitTest"
-    val requireNoArgConstructor: Boolean = true
+  private object JUnitFingerprint extends AnnotatedFingerprint {
+    override def annotationName(): String = "org.junit.Test"
+
+    override def isModule(): Boolean = false
+
+    override def equals(obj: Any): Boolean = {
+      obj match {
+        case obj: AnnotatedFingerprint =>
+          annotationName() == obj.annotationName() && isModule() == obj.isModule()
+        case _ => false
+      }
+    }
   }
 
   def fingerprints: Array[Fingerprint] = {

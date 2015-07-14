@@ -3,9 +3,6 @@ package org.scalajs.junit
 import sbt.testing._
 import org.scalajs.testinterface.TestUtils
 import scala.util.{Try, Success, Failure}
-import scala.scalajs.js.Dynamic
-import scala.util.Failure
-
 
 final class JUnitTask(
   val taskDef: TaskDef,
@@ -20,61 +17,95 @@ final class JUnitTask(
   }
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
-    println(s"""
+    println
+    println(
+      s"""
       |JUnitTask.execute(eventHandler = $eventHandler, loggers = $loggers)
       |  taskDef = $taskDef
       |  runner = $runner
     """.stripMargin)
 
     println(taskDef.fullyQualifiedName)
-    val tryInstance = Try(TestUtils.newInstance(taskDef.fullyQualifiedName, runner.testClassLoader)(Seq()))
-    // Fixme: Not loading module
-    val moduleOption: Option[ScalaJSJUnitTest] = Some(TestUtils.loadModule(taskDef.fullyQualifiedName, runner.testClassLoader)).collect {
-      case module: ScalaJSJUnitTest => module
+
+    val classMetadataTry = {
+      Try(TestUtils.loadModule(taskDef.fullyQualifiedName + "$scalajs$junit$hook",
+          runner.testClassLoader))
     }
 
-    tryInstance match {
-      case Success(testInstance: ScalaJSJUnitTest) =>
+    classMetadataTry match {
+      case Success(classMetadata: ScalaJSJUnitTestMetadata) =>
 
-        println(s"testInstance: ${testInstance.getJUnitMetadata$}")
+        def executeMethod(method: MethodMetadata, invokeJUnitMethod: String => Unit) = {
+          method.getIgnoreAnnotation match {
+            case Some(ign) =>
+              println(s"Ignoring: ${method.name}")
+              if (ign.value != "")
+                println(s"| cause: ${ign.value}")
+              println(s"+--------")
+              println
 
-        def executeMethods(methods: List[AnnotatedMethod], invokeJUnitMethod: String => Unit) = {
-          for (method <- methods) {
-            method.getIgnoreAnnotation match {
-              case Some(ign) =>
-                println(s"Ignoring: ${method.name}")
-                if (ign.value != "")
-                  println(s"   cause: ${ign.value}")
+            case None =>
+              println(s"Executing: ${method.name}")
+              val testAnnotation = method.getTestAnnotation()
+              val (result, time) = {
+                val t0 = System.currentTimeMillis
+                val result = Try(invokeJUnitMethod(method.id))
+                val time = System.currentTimeMillis - t0
+                (result, time)
+              }
 
-              case None =>
-                println(s"Executing: ${method.name}")
-                Try (invokeJUnitMethod(method.id)) match {
-                  case Success (_) =>
-                    println (s"| Success")
-                  case Failure (exception) =>
-                    println (s"| Failed: ${exception.getMessage}")
-                    exception.printStackTrace ()
-                }
-            }
+              result match {
+                case Success (_) =>
+                  testAnnotation match {
+                    case Some(test) =>
+                      if (test.expected == classOf[org.junit.Test.None]) {
+                        println(s"| Success")
+                      } else {
+                        println(s"| Failed: expected exception ")
+                        println(s"| Expected: ${test.expected.getName}")
+                      }
+                      if (test.timeout != 0 && test.timeout <= time) {
+                        println(s"| Timeout: executed in $time ms, expected ${test.timeout} ms")
+                      }
+
+                    case None =>
+                      println (s"| Success")
+                  }
+
+                case Failure (exception) =>
+                  testAnnotation match {
+                    case Some(test) =>
+                      if (test.expected == exception.getClass) {
+                        println(s"| Success")
+                      } else {
+                        println(s"| Failed: expected different exception ")
+                        println(s"| Expected: ${test.expected.getName}")
+                        println(s"| Received: ${exception.getClass.getName}")
+                      }
+
+                    case None =>
+                      println (s"| Failed: ${exception.getMessage}")
+                      exception.printStackTrace ()
+                  }
+
+              }
+              println(s"+-------- $time ms")
+              println
           }
         }
 
-        val jUnitMetadata = testInstance.getJUnitMetadata$()
-        val jUnitModuleMetadataOption = moduleOption.map(_.getJUnitMetadata$())
+        val jUnitMetadata = classMetadata.scalajs$junit$metadata
 
-        jUnitModuleMetadataOption match {
-          case Some(jUnitModuleMetadata) =>
-            executeMethods(jUnitModuleMetadata.beforeClassMethods, moduleOption.get.invokeJUnitMethod$)
-          case None =>
+        jUnitMetadata.beforeClassMethod.foreach(executeMethod(_, classMetadata.scalajs$junit$invoke))
+
+        val testClassInstance = classMetadata.scalajs$junit$newInstance
+        for (method <- jUnitMetadata.testMethods) {
+          jUnitMetadata.beforeMethod.foreach(executeMethod(_, testClassInstance.scalajs$junit$invoke))
+          executeMethod(method, testClassInstance.scalajs$junit$invoke)
+          jUnitMetadata.afterMethod.foreach(executeMethod(_, testClassInstance.scalajs$junit$invoke))
         }
-        executeMethods(jUnitMetadata.beforeMethods, testInstance.invokeJUnitMethod$)
-        executeMethods(jUnitMetadata.testMethods, testInstance.invokeJUnitMethod$)
-        executeMethods(jUnitMetadata.afterMethods, testInstance.invokeJUnitMethod$)
-        jUnitModuleMetadataOption match {
-          case Some(jUnitModuleMetadata) =>
-            executeMethods(jUnitModuleMetadata.afterClassMethods, moduleOption.get.invokeJUnitMethod$)
-          case None =>
-        }
+
+        jUnitMetadata.afterClassMethod.foreach(executeMethod(_, classMetadata.scalajs$junit$invoke))
 
       case Success(_) =>
         // TODO warn, class should be a subclass of org.scalajs.junit.Test

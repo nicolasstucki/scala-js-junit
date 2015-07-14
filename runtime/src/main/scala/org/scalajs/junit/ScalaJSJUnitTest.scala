@@ -3,11 +3,11 @@ package org.scalajs.junit
 import java.lang.annotation.Annotation
 
 import org.junit.FixMethodOrder
-import org.junit.runners.MethodSorters
 
+import scala.scalajs.js.annotation.JSExportDescendentObjects
 import scala.scalajs.js.annotation.JSExportDescendentClasses
 
-case class AnnotatedMethod(name: String, id: String, annotations: List[Annotation]) {
+case class MethodMetadata(name: String, id: String, annotations: List[Annotation]) {
 
   def hasTestAnnotation: Boolean =
     annotations.exists(_.isInstanceOf[org.junit.Test])
@@ -18,38 +18,43 @@ case class AnnotatedMethod(name: String, id: String, annotations: List[Annotatio
   def hasAfterAnnotation: Boolean =
     annotations.exists(_.isInstanceOf[org.junit.After])
 
-  def getIgnoreAnnotation(): Option[org.junit.Ignore] =
-    annotations.collectFirst { case ign: org.junit.Ignore => ign }
-
   def hasBeforeClassAnnotation: Boolean =
     annotations.exists(_.isInstanceOf[org.junit.BeforeClass])
 
   def hasAfterClassAnnotation: Boolean =
     annotations.exists(_.isInstanceOf[org.junit.AfterClass])
+
+  def getTestAnnotation(): Option[org.junit.Test] =
+    annotations.collectFirst { case test: org.junit.Test => test }
+
+  def getIgnoreAnnotation(): Option[org.junit.Ignore] =
+    annotations.collectFirst { case ign: org.junit.Ignore => ign }
 }
 
-case class TestClass(
+case class ClassMetadata(
     annotations: List[Annotation],
-    methods: List[AnnotatedMethod]) {
+    moduleAnnotations: List[Annotation],
+    methods: List[MethodMetadata],
+    moduleMethods: List[MethodMetadata]) {
 
-  def testMethods: List[AnnotatedMethod] = {
+  def testMethods: List[MethodMetadata] = {
     val fixMethodOrderAnnotation = getFixMethodOrderAnnotation()
-    println("Sorting methods with " + fixMethodOrderAnnotation)
-    val methodOrdering = fixMethodOrderAnnotation.value.comparator
-    methods.filter(_.hasTestAnnotation).sortWith((a, b) => methodOrdering.lt(a.name, b.name))
+    val methodSorter = fixMethodOrderAnnotation.value
+    val tests = methods.filter(_.hasTestAnnotation)
+    tests.sortWith((a, b) => methodSorter.comparator.lt(a.name, b.name))
   }
 
-  def beforeMethods: List[AnnotatedMethod] =
-    methods.filter(_.hasBeforeAnnotation)
+  def beforeMethod: Option[MethodMetadata] =
+    methods.find(_.hasBeforeAnnotation)
 
-  def afterMethods: List[AnnotatedMethod] =
-    methods.filter(_.hasAfterAnnotation)
+  def afterMethod: Option[MethodMetadata] =
+    methods.find(_.hasAfterAnnotation)
 
-  def beforeClassMethods: List[AnnotatedMethod] =
-    methods.filter(_.hasBeforeClassAnnotation)
+  def beforeClassMethod: Option[MethodMetadata] =
+    moduleMethods.find(_.hasBeforeClassAnnotation)
 
-  def afterClassMethods: List[AnnotatedMethod] =
-    methods.filter(_.hasAfterClassAnnotation)
+  def afterClassMethod: Option[MethodMetadata] =
+    moduleMethods.find(_.hasAfterClassAnnotation)
 
   def getFixMethodOrderAnnotation(): FixMethodOrder = {
     annotations.collectFirst {
@@ -59,14 +64,15 @@ case class TestClass(
 
 }
 
-@JSExportDescendentClasses
-trait ScalaJSJUnitTest {
-
-  def invokeJUnitMethod$(methodId: String): Unit
-
-  def getJUnitMetadata$(): TestClass
-
+@JSExportDescendentObjects
+trait ScalaJSJUnitTestMetadata {
+  def scalajs$junit$metadata(): ClassMetadata
+  def scalajs$junit$newInstance(): ScalaJSJUnitTest
+  def scalajs$junit$invoke(methodId: String): Unit
 }
 
+@JSExportDescendentObjects
 @JSExportDescendentClasses
-trait ScalaJSJUnitTest2
+trait ScalaJSJUnitTest {
+  def scalajs$junit$invoke(methodId: String): Unit
+}

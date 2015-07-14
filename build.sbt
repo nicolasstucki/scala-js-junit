@@ -2,7 +2,7 @@ resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repos
 
 val commonSettings: Seq[Setting[_]] = Seq(
   version := "0.1-SNAPSHOT",
-  scalaVersion := "2.11.6"
+  scalaVersion := "2.11.7"
 )
 
 lazy val `scalajs-junit` = project.in(file("runtime")).
@@ -17,7 +17,6 @@ lazy val `scalajs-junit-plugin` = project.in(file("junit-plugin")).
   settings(commonSettings: _*).
   settings(
     name := "Scala.js JUnit plugin",
-    libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
     libraryDependencies := {
       CrossVersion.partialVersion(scalaVersion.value) match {
         // if scala 2.11+ is used, quasiquotes are merged into scala-reflect
@@ -30,6 +29,7 @@ lazy val `scalajs-junit-plugin` = project.in(file("junit-plugin")).
             "org.scalamacros" %% "quasiquotes" % "2.0.0" cross CrossVersion.binary)
       }
     },
+    libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value,
     exportJars := true
   ).dependsOn(`scalajs-junit`)
 

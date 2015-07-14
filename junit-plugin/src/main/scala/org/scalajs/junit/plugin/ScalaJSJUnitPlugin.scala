@@ -1,6 +1,6 @@
 package org.scalajs.junit.plugin
 
-import org.junit.{BeforeClass, AfterClass}
+import org.scalajs.junit.ScalaJSJUnitTest
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins.{
@@ -25,26 +25,70 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
     val global: Global = selfPlugin.global
     val phaseName: String = "junit-inject"
     val runsAfter: List[String] = List("mixin")
+    override val runsBefore: List[String] = List("jscode")
 
     class ScalaJSJUnitPluginTransformer extends global.Transformer {
       import global._
+
+      type ScalaJSPlugin = NscPlugin {
+        def PrepInteropComponent: AnyRef {
+          def genExportMember(sym: Symbol): List[Tree]
+          def registerModuleExports(sym: Symbol): Unit
+          def genNamedExport(defSym: Symbol, jsName: String, pos: Position): Unit
+        }
+      }
+
+      lazy val scalaJSPlugin = {
+        global.plugins.collectFirst {
+          case pl if pl.getClass.getName == "org.scalajs.core.compiler.ScalaJSPlugin" => pl
+        }.get.asInstanceOf[ScalaJSPlugin]
+      }
 
       override def transform(tree: Tree): Tree = tree match {
         case tree: PackageDef =>
           def classHasJUnitAnnotations(clazz: ClassDef): Boolean = {
             clazz.impl.body.exists {
-              case ddef: DefDef => hasJUnitMethodAnnotation(ddef)
+              case ddef: DefDef => hasAnnotation[org.junit.Test](ddef)
               case _            => false
             }
           }
-          val newStats = tree.stats map {
-            case cldef: ClassDef if classHasJUnitAnnotations(cldef) =>
-              transformTestClass(cldef)
+          val newStats = tree.stats.groupBy {
+            case clDef: ClassDef => clDef.name
+            case _ => "not a class def"
+          }.iterator.flatMap {
+            case ("not a class def", xs) => xs
+            case (className , x :: xs) =>
+              val clDef1 = x.asInstanceOf[ClassDef]
+              val clDef2Option = xs match {
+                case Nil     => None
+                case y :: ys =>
+                  if (ys.isEmpty) Some(y.asInstanceOf[ClassDef])
+                  else None
+              }
+              val (clDefOption, mlDefOption) = {
+                if (clDef1.mods.hasFlag(256L /*FIXME find flag alias*/)) (clDef2Option, Some(clDef1))
+                else (Some(clDef1), clDef2Option)
+              }
 
-            case t => t
+              if (clDefOption.fold(false)(classHasJUnitAnnotations) ||
+                  mlDefOption.fold(false)(classHasJUnitAnnotations)) {
+                val transformedClDef = clDefOption match {
+                  case Some(clDef) => transformTestClass(clDef)
+                  case None        => throw new ClassNotFoundException(mlDefOption.get.name.toString)
+                }
+                val hookClass = mkHookClass(transformedClDef, mlDefOption)
+                println()
+                println(hookClass :: transformedClDef :: Nil)
+                println()
+                hookClass :: transformedClDef :: mlDefOption.toList
+              }
+              else x :: xs
+
+            case (_, Nil) => Nil
+
           }
 
-          val newPackage = tree.copy(stats = newStats)
+          val newPackage = tree.copy(stats = newStats.toList)
           newPackage.setSymbol(tree.symbol)
           newPackage
 
@@ -52,29 +96,33 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           super.transform(tree)
       }
 
-      def transformTestClass(clazz: ClassDef): Tree = {
+      def getLocalMethodSymbol(clazz: ClassDef): Symbol = {
+        clazz.impl.body.collectFirst {
+          case dDef: DefDef if hasAnnotation[org.junit.Test](dDef) => dDef
+        }.get.symbol
+      }
 
-        val invokeJUnitMethodDef = mkInvokeJUnitMethodDef(clazz)
-        val getJUnitMetadataDef = mkGetJUnitMetadataDef(clazz)
+      def transformTestClass(clazz: ClassDef): ClassDef = {
+        val invokeJUnitMethodDef = {
+          val annotatedMethods = jUnitAnnotatedMethods(clazz)
+          val localMethodSymbol = getLocalMethodSymbol(clazz)
+          mkInvokeJUnitMethodDef(annotatedMethods, localMethodSymbol)
+        }
 
-        println(invokeJUnitMethodDef)
-        println(getJUnitMetadataDef)
-
-        val newBody = clazz.impl.body :+ invokeJUnitMethodDef :+ getJUnitMetadataDef
+        val newBody = invokeJUnitMethodDef :: clazz.impl.body
         val newParents = clazz.impl.parents :::
-            TypeTree(typeOf[org.scalajs.junit.ScalaJSJUnitTest2]) :: Nil
+            TypeTree(typeOf[ScalaJSJUnitTest]) :: Nil
         val newImpl = clazz.impl.copy(parents = newParents, body = newBody)
         val newClazz = {
           val newClazz =
-              gen.mkClassDef(clazz.mods, clazz.name, clazz.tparams, newImpl)
+            gen.mkClassDef(Modifiers(), clazz.name, Nil, newImpl)
           val clazzSym = {
             val clazzSym = clazz.symbol
             val newClazzInfo = {
               val newParentsInfo = clazzSym.info.parents :::
-                  typeOf[org.scalajs.junit.ScalaJSJUnitTest2] :: Nil
+                typeOf[org.scalajs.junit.ScalaJSJUnitTest]  :: Nil
               val decls = clazzSym.info.decls
               decls.enter(invokeJUnitMethodDef.symbol)
-              decls.enter(getJUnitMetadataDef.symbol)
               ClassInfoType(newParentsInfo, decls, clazzSym.info.typeSymbol)
             }
             clazzSym.setInfo(newClazzInfo)
@@ -84,31 +132,69 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           newClazz
         }
 
-        val typedClazz = typer.typedClassDef(newClazz)
-        typedClazz
+        typer.typedClassDef(newClazz).asInstanceOf[ClassDef]
+      }
+
+      def mkHookClass(clazz: ClassDef, mlDefOption: Option[ClassDef]): Tree = {
+        val clazzSym = clazz.symbol.cloneSymbol
+        val getJUnitMetadataDef = mkGetJUnitMetadataDef (clazz, mlDefOption)
+        val newInstanceDef = mkNewInstanceDef(clazz, mlDefOption)
+        val invokeJUnitMethodDef = {
+          val annotatedMethods = mlDefOption.fold[List[DefDef]](Nil)(jUnitAnnotatedMethods)
+          val localMethodSymbol = (annotatedMethods ::: getMethods(clazz)).head.symbol
+          localMethodSymbol.setInfo(localMethodSymbol.info.atOwner(clazzSym))
+          mkInvokeJUnitMethodDef(annotatedMethods, localMethodSymbol)
+        }
+
+        val newBody = getJUnitMetadataDef :: newInstanceDef :: invokeJUnitMethodDef :: Nil
+        val newParents = TypeTree(typeOf[java.lang.Object]) ::
+            TypeTree(typeOf[org.scalajs.junit.ScalaJSJUnitTestMetadata]) :: Nil
+        val newImpl = clazz.impl.copy(parents = newParents, body = newBody)
+        val newClazz = {
+          val newClassName = TypeName(clazz.name.toString + "$scalajs$junit$hook")
+          val newClazz =
+              gen.mkClassDef(Modifiers(256L /*FIXME find flag alias*/), newClassName, Nil, newImpl)
+          clazzSym.flags += 256L /*FIXME find flag alias*/
+          clazzSym.withoutAnnotations
+          clazzSym.setName(newClassName)
+          val newClazzInfo = {
+            val newParentsInfo = typeOf[java.lang.Object] ::
+                typeOf[org.scalajs.junit.ScalaJSJUnitTestMetadata] :: Nil
+            val decls = clazzSym.info.decls
+            decls.enter(getJUnitMetadataDef.symbol)
+            decls.enter(newInstanceDef.symbol)
+            decls.enter(invokeJUnitMethodDef.symbol)
+            ClassInfoType(newParentsInfo, decls, clazzSym.info.typeSymbol)
+          }
+          clazzSym.setInfo(newClazzInfo)
+          scalaJSPlugin.PrepInteropComponent.registerModuleExports(clazzSym)
+
+          newClazz.setSymbol(clazzSym)
+          newClazz
+        }
+        typer.typedClassDef(newClazz)
       }
 
       def jUnitAnnotatedMethods(clDef: ClassDef): List[DefDef] = {
-        clDef.impl.body collect {
+        clDef.impl.body.collect {
           case ddef: DefDef if hasJUnitMethodAnnotation(ddef) => ddef
         }
       }
 
-      def mkInvokeJUnitMethodDef(clDef: ClassDef): DefDef = {
-        val methods = jUnitAnnotatedMethods(clDef)
+      def getMethods(clazzDef: ClassDef): List[DefDef] =
+        clazzDef.impl.body.collect { case dDef: DefDef => dDef }
 
-        val local = methods.head.symbol
-
-        val invokeJUnitMethodSym = local.cloneSymbol
+      def mkInvokeJUnitMethodDef(methods: List[DefDef],
+          localMethodSymbol: Symbol): DefDef = {
+        val invokeJUnitMethodSym = localMethodSymbol.cloneSymbol
         invokeJUnitMethodSym.withoutAnnotations
-        invokeJUnitMethodSym.setName(TermName("invokeJUnitMethod"))
-        invokeJUnitMethodSym.setInfo(typeOf[Unit])
-        invokeJUnitMethodSym.addAnnotation(new CompleteAnnotationInfo(
-            typeOf[scala.scalajs.js.annotation.JSExport], Nil, Nil))
+        invokeJUnitMethodSym.setName(TermName("scalajs$junit$invoke"))
 
         val paramSym =
-            invokeJUnitMethodSym.newValueParameter(TermName("methodId"))
+          invokeJUnitMethodSym.newValueParameter(TermName("methodId"))
         paramSym.setInfo(typeOf[java.lang.String])
+
+        invokeJUnitMethodSym.setInfo(MethodType(List(paramSym), typeOf[Unit]))
 
         val methodNotFound = {
           val msg = gen.mkMethodCall(paramSym, TermName("$plus"), Nil,
@@ -126,7 +212,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
               val symbol = method.symbol
               val headMethodId = Literal(Constant(id.toString))
               If(
-                gen.mkMethodCall(paramSym, TermName("equals"), Nil,
+                gen.mkMethodCall(paramSym, TermName("$eq$eq"), Nil,
                   List(headMethodId)),
                 gen.mkMethodCall(symbol, Nil),
                 mkInvokeJUnitMethodRhs(tail))
@@ -134,29 +220,30 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
               methodNotFound
           }
         }
-
         val invokeJUnitMethodRhs =
-            atOwner(invokeJUnitMethodSym)(typer.typed(mkInvokeJUnitMethodRhs(methods.zipWithIndex)))
+          atOwner(invokeJUnitMethodSym)(typer.typed(mkInvokeJUnitMethodRhs(methods.zipWithIndex)))
         val param = newValDef(paramSym, EmptyTree)()
         typer.typedDefDef(newDefDef(invokeJUnitMethodSym, invokeJUnitMethodRhs)(
-            vparamss = List(List(param))))
+          vparamss = List(List(param))))
       }
 
-      def mkGetJUnitMetadataDef(clDef: ClassDef): DefDef = {
+      def mkGetJUnitMetadataDef(clDef: ClassDef, mlDefOption : Option[ClassDef]): DefDef = {
         val methods = jUnitAnnotatedMethods(clDef)
+        val mlMethods = mlDefOption.map(jUnitAnnotatedMethods)
 
         def mkNewInstance[T: TypeTag](params: List[Tree] = Nil): Tree =
           Apply(Select(New(TypeTree(typeOf[T])), termNames.CONSTRUCTOR), params)
 
         def liftAnnotations(annotations: List[AnnotationInfo]): List[Tree] = {
           annotations.collect {
-            case ann if ann.atp == typeOf[org.junit.Test]        => mkNewInstance[org.junit.Test]()
-            case ann if ann.atp == typeOf[org.junit.Before]      => mkNewInstance[org.junit.Before]()
-            case ann if ann.atp == typeOf[org.junit.After]       => mkNewInstance[org.junit.After]()
-            case ann if ann.atp == typeOf[org.junit.BeforeClass] => mkNewInstance[org.junit.BeforeClass]()
-            case ann if ann.atp == typeOf[org.junit.AfterClass]  => mkNewInstance[org.junit.AfterClass]()
-            case ann if ann.atp == typeOf[org.junit.Ignore] =>
-              mkNewInstance[org.junit.Ignore]() // TODO add argument ann.args
+            // TODO add argument ann.args
+            case ann if ann.atp == typeOf[org.junit.Test]           => mkNewInstance[org.junit.Test]()
+            case ann if ann.atp == typeOf[org.junit.Before]         => mkNewInstance[org.junit.Before]()
+            case ann if ann.atp == typeOf[org.junit.After]          => mkNewInstance[org.junit.After]()
+            case ann if ann.atp == typeOf[org.junit.BeforeClass]    => mkNewInstance[org.junit.BeforeClass]()
+            case ann if ann.atp == typeOf[org.junit.AfterClass]     => mkNewInstance[org.junit.AfterClass]()
+            case ann if ann.atp == typeOf[org.junit.Ignore]         => mkNewInstance[org.junit.Ignore]()
+            case ann if ann.atp == typeOf[org.junit.FixMethodOrder] => mkNewInstance[org.junit.FixMethodOrder]()
           }
         }
 
@@ -185,21 +272,41 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         def mkMethodList[T: TypeTag](testMethods: List[DefDef]): Tree =
           mkList[T](testMethods.zipWithIndex.map(defaultMethodMetadata[T]))
 
-        val invokeJUnitMethodRhs = {
+        val getJUnitMethodRhs = {
           Apply(
-              Select(New(TypeTree(typeOf[org.scalajs.junit.TestClass])), termNames.CONSTRUCTOR),
+              Select(New(TypeTree(typeOf[org.scalajs.junit.ClassMetadata])), termNames.CONSTRUCTOR),
               List(
+                  mkList[java.lang.annotation.Annotation](liftAnnotations(clDef.symbol.annotations)),
                   gen.mkNil,
-                  mkMethodList[org.scalajs.junit.AnnotatedMethod](methods)))
+                  mkMethodList[org.scalajs.junit.MethodMetadata](methods),
+                  mlMethods.map(mkMethodList[org.scalajs.junit.MethodMetadata]).getOrElse(gen.mkNil)
+              ))
         }
 
         val local = methods.head.symbol
         val getJUnitMetadataSym = local.cloneSymbol
         getJUnitMetadataSym.withoutAnnotations
-        getJUnitMetadataSym.setName(TermName("getJUnitMetadata"))
-        getJUnitMetadataSym.setInfo(MethodType(Nil, typeOf[org.scalajs.junit.TestClass]))
+        getJUnitMetadataSym.setName(TermName("scalajs$junit$metadata"))
+        getJUnitMetadataSym.setInfo(MethodType(Nil, typeOf[org.scalajs.junit.ClassMetadata]))
 
-        typer.typedDefDef(newDefDef(getJUnitMetadataSym, invokeJUnitMethodRhs)())
+        typer.typedDefDef(newDefDef(getJUnitMetadataSym, getJUnitMethodRhs)())
+      }
+
+      def mkNewInstanceDef(clDef: ClassDef, mlDefOption : Option[ClassDef]): DefDef = {
+        val mkNewInstanceDefRhs = {
+          Apply(
+            Select(
+              New(TypeTree(clDef.symbol.typeConstructor)),
+              termNames.CONSTRUCTOR),
+            List())
+        }
+        val localMethod = clDef.impl.body.collectFirst { case dDef: DefDef => dDef }.get
+        val mkNewInstanceDefSym = localMethod.symbol.cloneSymbol
+        mkNewInstanceDefSym.withoutAnnotations
+        mkNewInstanceDefSym.setName(TermName("scalajs$junit$newInstance"))
+        mkNewInstanceDefSym.setInfo(MethodType(Nil, typeOf[ScalaJSJUnitTest]))
+
+        typer.typedDefDef(newDefDef(mkNewInstanceDefSym, mkNewInstanceDefRhs)())
       }
 
       def hasJUnitMethodAnnotation(ddef: DefDef): Boolean = {
@@ -213,7 +320,6 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
       def hasAnnotation[T: TypeTag](ddef: DefDef): Boolean =
         ddef.symbol.annotations.exists(_.atp == typeOf[T])
-
     }
   }
 }

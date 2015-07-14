@@ -4,12 +4,13 @@ import java.lang.annotation._
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(Array(ElementType.METHOD))
-class Test(expected: Class[_ <: Throwable] = None.getClass, timeout: Long = 0L)
-    extends Annotation {
-  def annotationType(): Class[Test] = classOf[Test]
+case class Test(expected: Class[_ <: Throwable] = classOf[Test.None],
+    timeout: Long = 0L) extends Annotation {
+  def annotationType (): Class[Annotation] =
+    classOf[Test].asInstanceOf[Class[Annotation]]
 }
 
 object Test {
   @SerialVersionUID(1L)
-  final class None private()
+  final class None private() extends Throwable
 }
