@@ -62,6 +62,19 @@ case class ClassMetadata(
     }.getOrElse(new FixMethodOrder)
   }
 
+  override def toString: String = {
+    def mkSt(xs: List[AnyRef]) =
+      if (xs.isEmpty) "Nil"
+      else "List(\n" + xs.map(x => s"    $x").mkString(",\n") + ")"
+    s"""
+      |ClassMetadata(
+      |  annotations = ${mkSt(annotations)},
+      |  moduleAnnotations = ${mkSt(moduleAnnotations)},
+      |  methods = ${mkSt(methods)},
+      |  moduleMethods = ${mkSt(moduleMethods)}
+      |)
+    """.stripMargin
+  }
 }
 
 @JSExportDescendentObjects

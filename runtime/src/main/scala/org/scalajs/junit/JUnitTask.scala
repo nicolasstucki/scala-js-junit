@@ -1,5 +1,9 @@
 package org.scalajs.junit
 
+import java.util
+
+import com.novocode.junit.{Ansi, RichLogger, RunSettings}
+import Ansi._
 import sbt.testing._
 import org.scalajs.testinterface.TestUtils
 import scala.util.{Try, Success, Failure}
@@ -9,23 +13,41 @@ final class JUnitTask(
   runner: BaseRunner
 ) extends sbt.testing.Task {
 
+
   def tags: Array[String] = Array.empty
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger],
         continuation: Array[Task] => Unit): Unit = {
-    continuation(execute(eventHandler, loggers))
+
+    val richLogger = new RichLogger(loggers, runner.runSettings, taskDef.fullyQualifiedName)
+    if (runner.runSettings.verbose)
+      richLogger.info(c("Test run started", INFO))
+
+    val startTime = System.currentTimeMillis
+    val tasks = execute(eventHandler, loggers)
+
+    if (runner.runSettings.verbose) {
+      val time = System.currentTimeMillis - startTime
+      val passed = runner.taskPassedCount()
+      val failed = runner.taskFailedCount()
+      val skipped = runner.taskSkippedCount()
+      val total = passed + failed + skipped
+      val msg = Seq(
+        c(" Test run finished:", INFO),
+        c(s"$failed failed,", if (failed == 0) INFO else ERRCOUNT),
+        c(s"$skipped ignored,", if (skipped == 0) INFO else IGNCOUNT),
+        c(s"$total total,", INFO),
+        c(s"${time}s", INFO))
+      richLogger.info(msg.mkString(" "))
+    }
+    continuation(tasks)
   }
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
-    println
-    println(
-      s"""
-      |JUnitTask.execute(eventHandler = $eventHandler, loggers = $loggers)
-      |  taskDef = $taskDef
-      |  runner = $runner
-    """.stripMargin)
+    val richLogger = new RichLogger(loggers, runner.runSettings, taskDef.fullyQualifiedName)
 
-    println(taskDef.fullyQualifiedName)
+    val packageName = taskDef.fullyQualifiedName.split('.').init.mkString(".")
+    val className = taskDef.fullyQualifiedName.split('.').last
 
     val classMetadataTry = {
       Try(TestUtils.loadModule(taskDef.fullyQualifiedName + "$scalajs$junit$hook",
@@ -35,89 +57,93 @@ final class JUnitTask(
     classMetadataTry match {
       case Success(classMetadata: ScalaJSJUnitTestMetadata) =>
 
-        def executeMethod(method: MethodMetadata, invokeJUnitMethod: String => Unit) = {
+        val jUnitMetadata = classMetadata.scalajs$junit$metadata
+        val testClassInstance = classMetadata.scalajs$junit$newInstance
+
+        for (method <- jUnitMetadata.testMethods) {
           method.getIgnoreAnnotation match {
             case Some(ign) =>
-              println(s"Ignoring: ${method.name}")
-              if (ign.value != "")
-                println(s"| cause: ${ign.value}")
-              println(s"+--------")
-              println
+              richLogger.info(formatInfo(packageName, className, method.name, "ignored"))
+              runner.taskSkipped()
 
             case None =>
-              println(s"Executing: ${method.name}")
-              val testAnnotation = method.getTestAnnotation()
+              val testAnnotation = method.getTestAnnotation().get
               val (result, time) = {
                 val t0 = System.currentTimeMillis
-                val result = Try(invokeJUnitMethod(method.id))
+                val result = Try(testClassInstance.scalajs$junit$invoke(method.id))
                 val time = System.currentTimeMillis - t0
                 (result, time)
               }
+              val timeInSeconds = time.toDouble / 1000
 
               result match {
-                case Success (_) =>
-                  testAnnotation match {
-                    case Some(test) =>
-                      if (test.expected == classOf[org.junit.Test.None]) {
-                        println(s"| Success")
-                      } else {
-                        println(s"| Failed: expected exception ")
-                        println(s"| Expected: ${test.expected.getName}")
-                      }
-                      if (test.timeout != 0 && test.timeout <= time) {
-                        println(s"| Timeout: executed in $time ms, expected ${test.timeout} ms")
-                      }
-
-                    case None =>
-                      println (s"| Success")
+                case Success(_) =>
+                  if (testAnnotation.expected == classOf[org.junit.Test.None]) {
+                    if (runner.runSettings.verbose)
+                      richLogger.info(formatInfo(packageName, className, method.name, "started"))
+                    runner.taskPassed()
+                  } else {
+                    val msg = {
+                      s"failed: Expected exception: ${testAnnotation.expected} " +
+                      s"took $timeInSeconds sec"
+                    }
+                    richLogger.error(formatError(packageName, className, method.name, msg))
+                    runner.taskFailed()
                   }
 
-                case Failure (exception) =>
-                  testAnnotation match {
-                    case Some(test) =>
-                      if (test.expected == exception.getClass) {
-                        println(s"| Success")
+
+                case Failure(exception) =>
+                  if (testAnnotation.expected == exception.getClass) {
+                    if (runner.runSettings.verbose)
+                      richLogger.info(formatInfo(packageName, className, method.name, "started"))
+                    runner.taskPassed()
+                  } else if (testAnnotation.expected == classOf[org.junit.Test.None]) {
+                    val failedMsg = "failed: " + {
+                      if (runner.runSettings.logExceptionClass) {
+                        exception.getMessage
                       } else {
-                        println(s"| Failed: expected different exception ")
-                        println(s"| Expected: ${test.expected.getName}")
-                        println(s"| Received: ${exception.getClass.getName}")
+                        exception.getClass + " expected<" +
+                        testAnnotation.expected + "> but was<" +
+                        exception.getClass + ">"
                       }
+                    } + ","
 
-                    case None =>
-                      println (s"| Failed: ${exception.getMessage}")
-                      exception.printStackTrace ()
+                    val msg = failedMsg + s" took $timeInSeconds sec"
+                    richLogger.error(formatError(packageName, className, method.name, msg), exception)
+                    runner.taskFailed()
+                  } else {
+                    val msg = s"failed: ${exception.getClass}, took $timeInSeconds sec"
+                    richLogger.error(formatError(packageName, className, method.name, msg), exception)
+                    runner.taskFailed()
                   }
-
               }
-              println(s"+-------- $time ms")
-              println
+              if (testAnnotation.timeout != 0 && testAnnotation.timeout <= time)
+                richLogger.warn(s"| Timeout: took $timeInSeconds sec, expected ${testAnnotation.timeout.toDouble / 1000} sec")
           }
         }
-
-        val jUnitMetadata = classMetadata.scalajs$junit$metadata
-
-        jUnitMetadata.beforeClassMethod.foreach(executeMethod(_, classMetadata.scalajs$junit$invoke))
-
-        val testClassInstance = classMetadata.scalajs$junit$newInstance
-        for (method <- jUnitMetadata.testMethods) {
-          jUnitMetadata.beforeMethod.foreach(executeMethod(_, testClassInstance.scalajs$junit$invoke))
-          executeMethod(method, testClassInstance.scalajs$junit$invoke)
-          jUnitMetadata.afterMethod.foreach(executeMethod(_, testClassInstance.scalajs$junit$invoke))
-        }
-
-        jUnitMetadata.afterClassMethod.foreach(executeMethod(_, classMetadata.scalajs$junit$invoke))
 
       case Success(_) =>
         // TODO warn, class should be a subclass of org.scalajs.junit.Test
         // if framework works correctly, this case should never happend
+        runner.taskFailed()
       case Failure(exception) =>
         // TODO
-        println(exception)
+//        println(exception)
+        runner.taskFailed()
     }
 
     runner.taskDone()
     Array()
   }
+
+  private def formatInfo(packageName: String, className: String, method: String, msg: String): String =
+    formatLayout(packageName, c(className, NNAME1), c(method, NNAME2), msg)
+
+  private def formatError(packageName: String, className: String, method: String, msg: String): String =
+    formatLayout(packageName, c(className, NNAME1), c(method, ERRMSG), msg)
+
+  private def formatLayout(packageName: String, className: String, method: String, msg: String): String =
+    s"Test $packageName.$className.$method $msg"
 
   private class DummyEvent(taskDef: TaskDef, t: Option[Throwable]) extends Event {
     val fullyQualifiedName: String = taskDef.fullyQualifiedName

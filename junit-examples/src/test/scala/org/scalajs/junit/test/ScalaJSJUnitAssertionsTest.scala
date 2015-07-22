@@ -1,9 +1,8 @@
 package org.scalajs.junit.test
 
-import org.junit.Test
-
-import org.junit.Assert._
 import org.hamcrest.CoreMatchers._
+import org.junit.Assert._
+import org.junit.Test
 
 class ScalaJSJUnitAssertionsTest {
 
@@ -24,16 +23,16 @@ class ScalaJSJUnitAssertionsTest {
 
   @Test
   def testAssertTrueFalse() = {
-    testIfAsserts(assertTrue("'true' did not assertTrue", condition = true))
+    testIfAsserts(assertTrue("'true' did not assertTrue", true))
     testIfAsserts(assertTrue(true))
 
-    testIfAsserts(assertFalse("'false' did not assertFalse", condition = false))
+    testIfAsserts(assertFalse("'false' did not assertFalse", false))
     testIfAsserts(assertFalse(false))
 
-    testIfAsserts(assertTrue("'true' did not assertTrue", condition = false), shallNotPass)
+    testIfAsserts(assertTrue("'true' did not assertTrue", false), shallNotPass)
     testIfAsserts(assertTrue(false), shallNotPass)
 
-    testIfAsserts(assertFalse("'false' did not assertFalse", condition = true), shallNotPass)
+    testIfAsserts(assertFalse("'false' did not assertFalse", true), shallNotPass)
     testIfAsserts(assertFalse(true), shallNotPass)
   }
 

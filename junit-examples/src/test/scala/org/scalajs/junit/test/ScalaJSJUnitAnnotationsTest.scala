@@ -18,7 +18,7 @@ class ScalaJSJUnitAnnotationsTest {
   def afterTest(): Unit = { }
 
   @Test
-  def test1(): Unit = { throw new Exception("fs")}
+  def test1(): Unit = { throw new Exception("fs") }
 
   @Test
   def test2(): Unit = { }

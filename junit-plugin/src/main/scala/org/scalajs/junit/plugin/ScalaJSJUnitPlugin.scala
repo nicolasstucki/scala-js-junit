@@ -13,14 +13,17 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
   val name: String = "Scala.js JUnit plugin"
 
   val components: List[NscPluginComponent] =
-    List(ScalaJSJUnitPluginComponents)
+    List(ScalaJSJUnitPluginComponent)
 
   val description: String = "Adapts JUnit test classes to Scala.js"
 
-  object ScalaJSJUnitPluginComponents extends plugins.PluginComponent with transform.Transform {
+  object ScalaJSJUnitPluginComponent extends plugins.PluginComponent
+      with transform.Transform {
 
-    protected def newTransformer(unit: global.CompilationUnit): global.Transformer =
+    protected def newTransformer(
+        unit: global.CompilationUnit): global.Transformer = {
       new ScalaJSJUnitPluginTransformer
+    }
 
     val global: Global = selfPlugin.global
     val phaseName: String = "junit-inject"
@@ -77,9 +80,6 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
                   case None        => throw new ClassNotFoundException(mlDefOption.get.name.toString)
                 }
                 val hookClass = mkHookClass(transformedClDef, mlDefOption)
-                println()
-                println(hookClass :: transformedClDef :: Nil)
-                println()
                 hookClass :: transformedClDef :: mlDefOption.toList
               }
               else x :: xs
@@ -237,7 +237,10 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         def liftAnnotations(annotations: List[AnnotationInfo]): List[Tree] = {
           annotations.collect {
             // TODO add argument ann.args
-            case ann if ann.atp == typeOf[org.junit.Test]           => mkNewInstance[org.junit.Test]()
+            case ann if ann.atp == typeOf[org.junit.Test]           =>
+//              println(ann.args)
+//              println
+              mkNewInstance[org.junit.Test]()//(ann.args)
             case ann if ann.atp == typeOf[org.junit.Before]         => mkNewInstance[org.junit.Before]()
             case ann if ann.atp == typeOf[org.junit.After]          => mkNewInstance[org.junit.After]()
             case ann if ann.atp == typeOf[org.junit.BeforeClass]    => mkNewInstance[org.junit.BeforeClass]()
