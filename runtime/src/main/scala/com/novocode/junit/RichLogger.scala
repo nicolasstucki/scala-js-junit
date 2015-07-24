@@ -136,7 +136,7 @@ final class RichLogger private(loggers: Array[Logger], settings: RunSettings) {
       )
     val b = new StringBuilder
     // TODO
-    //    b.append(settings.decodeName(e.getClassName + '.' + e.getMethodName))
+//        b.append(settings.decodeName(e.getClassName + '.' + e.getMethodName))
     b.append(e.getClassName + '.' + e.getMethodName)
     b.append('(')
 

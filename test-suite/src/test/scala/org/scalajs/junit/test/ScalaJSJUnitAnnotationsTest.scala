@@ -1,6 +1,7 @@
 package org.scalajs.junit.test
 
 import org.junit._
+import org.junit.Assume._
 
 object ScalaJSJUnitAnnotationsTest {
   @BeforeClass
@@ -15,10 +16,10 @@ class ScalaJSJUnitAnnotationsTest {
   def beforeTest(): Unit = { }
 
   @After
-  def afterTest(): Unit = { }
+  def afterTest(): Unit = {  }
 
   @Test
-  def test1(): Unit = { throw new Exception("fs")}
+  def test1(): Unit = { }
 
   @Test
   def test2(): Unit = { }
@@ -30,7 +31,7 @@ class ScalaJSJUnitAnnotationsTest {
   @Test
   def testIgnore(): Unit = { }
 
-  @Ignore("This is the @Ignore message")
+  @Ignore("This is the @Ignore message.")
   @Test
   def testIgnoreWithMessage(): Unit = { }
 }

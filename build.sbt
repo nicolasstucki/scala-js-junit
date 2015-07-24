@@ -39,7 +39,7 @@ lazy val testSuite = project.in(file("test-suite")).
   settings(
     name := "Scala.js JUnit test",
     testFrameworks += new TestFramework("org.scalajs.junit.JUnitFramework"),
-    testOptions += Tests.Argument(new TestFramework("org.scalajs.junit.JUnitFramework"), "-v", "-s")
+    testOptions += Tests.Argument(new TestFramework("org.scalajs.junit.JUnitFramework"), "-v")
   ).dependsOn(`scalajs-junit` % "test", `scalajs-junit-plugin` % "plugin")
 
 lazy val `junit-examples` = project.in(file("junit-examples")).
@@ -47,6 +47,6 @@ lazy val `junit-examples` = project.in(file("junit-examples")).
   settings(
     name := "JUnit examples",
     testFrameworks += TestFrameworks.JUnit,
-    testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-s"),
+    testOptions += Tests.Argument(TestFrameworks.JUnit, "-v"),
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
   )

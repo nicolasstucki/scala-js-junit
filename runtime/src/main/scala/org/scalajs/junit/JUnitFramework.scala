@@ -26,13 +26,13 @@ final class JUnitFramework extends Framework {
   }
 
   def runner(args: Array[String], remoteArgs: Array[String],
-    testClassLoader: ClassLoader): MasterRunner = {
-    new MasterRunner(args, remoteArgs, testClassLoader, parseRunSettings(args))
+    testClassLoader: ClassLoader): JUnitMasterRunner = {
+    new JUnitMasterRunner(args, remoteArgs, testClassLoader, parseRunSettings(args))
   }
 
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
-    testClassLoader: ClassLoader, send: String => Unit): SlaveRunner = {
-    new SlaveRunner(args, remoteArgs, testClassLoader, send, parseRunSettings(args))
+    testClassLoader: ClassLoader, send: String => Unit): JUnitSlaveRunner = {
+    new JUnitSlaveRunner(args, remoteArgs, testClassLoader, send, parseRunSettings(args))
   }
 
   def arrayString(arr: Array[String]): String = arr.mkString("Array(", ", ", ")")
@@ -54,14 +54,20 @@ final class JUnitFramework extends Framework {
       else if("-s".equals(s)) decodeScalaNames = true
       else if("-a".equals(s)) logAssert = true
       else if("-c".equals(s)) logExceptionClass = false
-      else if(s.startsWith("-tests=")) throw new NotImplementedError("-tests")
-      else if(s.startsWith("--tests=")) throw new NotImplementedError("--tests")
+      else if(s.startsWith("-tests="))
+        throw new UnsupportedOperationException("-tests")
+      else if(s.startsWith("--tests="))
+        throw new UnsupportedOperationException("--tests")
       else if(s.startsWith("--ignore-runners=")) ignoreRunners = s.substring(17)
       else if(s.startsWith("--run-listener=")) runListener = s.substring(15)
-      else if(s.startsWith("--include-categories=")) throw new NotImplementedError("--include-categories")
-      else if(s.startsWith("--exclude-categories=")) throw new NotImplementedError("--exclude-categories")
-      else if(s.startsWith("-D") && s.contains("=")) throw new NotImplementedError("-Dkey=value")
-      else if(!s.startsWith("-") && !s.startsWith("+")) throw new NotImplementedError("-/+")
+      else if(s.startsWith("--include-categories="))
+        throw new UnsupportedOperationException("--include-categories")
+      else if(s.startsWith("--exclude-categories="))
+        throw new UnsupportedOperationException("--exclude-categories")
+      else if(s.startsWith("-D") && s.contains("="))
+        throw new UnsupportedOperationException("-Dkey=value")
+      else if(!s.startsWith("-") && !s.startsWith("+"))
+        throw new UnsupportedOperationException(s)
     }
     for (s <- args) {
       s match {

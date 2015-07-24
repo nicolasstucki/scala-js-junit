@@ -148,7 +148,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
         val newBody = getJUnitMetadataDef :: newInstanceDef :: invokeJUnitMethodDef :: Nil
         val newParents = TypeTree(typeOf[java.lang.Object]) ::
-            TypeTree(typeOf[org.scalajs.junit.ScalaJSJUnitTestMetadata]) :: Nil
+            TypeTree(typeOf[org.scalajs.junit.JUnitTestMetadata]) :: Nil
         val newImpl = clazz.impl.copy(parents = newParents, body = newBody)
         val newClazz = {
           val newClassName = TypeName(clazz.name.toString + "$scalajs$junit$hook")
@@ -159,7 +159,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           clazzSym.setName(newClassName)
           val newClazzInfo = {
             val newParentsInfo = typeOf[java.lang.Object] ::
-                typeOf[org.scalajs.junit.ScalaJSJUnitTestMetadata] :: Nil
+                typeOf[org.scalajs.junit.JUnitTestMetadata] :: Nil
             val decls = clazzSym.info.decls
             decls.enter(getJUnitMetadataDef.symbol)
             decls.enter(newInstanceDef.symbol)
@@ -234,25 +234,70 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         def mkNewInstance[T: TypeTag](params: List[Tree] = Nil): Tree =
           Apply(Select(New(TypeTree(typeOf[T])), termNames.CONSTRUCTOR), params)
 
-        def liftAnnotations(annotations: List[AnnotationInfo]): List[Tree] = {
+        def liftAnnotations(methodSymbol: Symbol): List[Tree] = {
+          val annotations = methodSymbol.annotations
+          def lift(t: Tree): Tree = {
+            t match {
+              case lit: Literal => lit
+
+              case Select(t, name) => Select(lift(t), name)
+
+              case ValDef(mod, name, tpt, rhs) => ValDef(mod, name, tpt, lift(rhs))
+
+              case _ => t
+            }
+          }
+          def liftList(params: List[Tree]): List[Tree] =
+            params.map(lift)
+
           annotations.collect {
-            // TODO add argument ann.args
-            case ann if ann.atp == typeOf[org.junit.Test]           =>
-//              println(ann.args)
-//              println
-              mkNewInstance[org.junit.Test]()//(ann.args)
-            case ann if ann.atp == typeOf[org.junit.Before]         => mkNewInstance[org.junit.Before]()
-            case ann if ann.atp == typeOf[org.junit.After]          => mkNewInstance[org.junit.After]()
-            case ann if ann.atp == typeOf[org.junit.BeforeClass]    => mkNewInstance[org.junit.BeforeClass]()
-            case ann if ann.atp == typeOf[org.junit.AfterClass]     => mkNewInstance[org.junit.AfterClass]()
-            case ann if ann.atp == typeOf[org.junit.Ignore]         => mkNewInstance[org.junit.Ignore]()
-            case ann if ann.atp == typeOf[org.junit.FixMethodOrder] => mkNewInstance[org.junit.FixMethodOrder]()
+            case ann if ann.atp == typeOf[org.junit.Test] =>
+              ann.original match {
+                case Block(stats, _) =>
+                  throw new UnsupportedOperationException(
+                      "@Test(timeout = ...) is not yet supported in ScalaJS JUnit Framework")
+//                  val newStats = stats.map {
+//                    case ValDef(mods, name, tpt, rhs) =>
+//                      val vDef = ValDef(mods, TermName(name.toString), tpt, rhs)
+//
+//                      vDef.symbol.owner = methodSymbol
+//                      typer.typedValDef(vDef)
+//                    case t => t
+//                  }
+//                  val newArgs = liftList(ann.args)
+//                  val newAnn = mkNewInstance[org.junit.Test]()//newArgs)
+//
+//                  Block(newStats, newAnn)
+
+                case _ => mkNewInstance[org.junit.Test](liftList(ann.args))
+              }
+
+            case ann if ann.atp == typeOf[org.junit.Before] =>
+              mkNewInstance[org.junit.Before]()
+
+            case ann if ann.atp == typeOf[org.junit.After] =>
+              mkNewInstance[org.junit.After]()
+
+            case ann if ann.atp == typeOf[org.junit.BeforeClass] =>
+              mkNewInstance[org.junit.BeforeClass]()
+
+            case ann if ann.atp == typeOf[org.junit.AfterClass] =>
+              mkNewInstance[org.junit.AfterClass]()
+
+            case ann if ann.atp == typeOf[org.junit.Ignore] =>
+              mkNewInstance[org.junit.Ignore](liftList(ann.args))
+
+            case ann if ann.atp == typeOf[org.junit.FixMethodOrder] =>
+              mkNewInstance[org.junit.FixMethodOrder]() // FIXME (liftList(ann.args))
+              throw new UnsupportedOperationException(
+                  "@FixMethodOrder(...) is not yet supported in ScalaJS JUnit Framework")
+
           }
         }
 
         def defaultMethodMetadata[T: TypeTag](methodAndId: (DefDef, Int)): Tree = {
           val (m, id) = methodAndId
-          val annotations = liftAnnotations(m.symbol.annotations)
+          val annotations = liftAnnotations(m.symbol)
           Apply(
               Select(New(TypeTree(typeOf[T])), termNames.CONSTRUCTOR),
               List(
@@ -277,12 +322,12 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
         val getJUnitMethodRhs = {
           Apply(
-              Select(New(TypeTree(typeOf[org.scalajs.junit.ClassMetadata])), termNames.CONSTRUCTOR),
+              Select(New(TypeTree(typeOf[org.scalajs.junit.JUnitClassMetadata])), termNames.CONSTRUCTOR),
               List(
-                  mkList[java.lang.annotation.Annotation](liftAnnotations(clDef.symbol.annotations)),
+                  mkList[java.lang.annotation.Annotation](liftAnnotations(clDef.symbol)),
                   gen.mkNil,
-                  mkMethodList[org.scalajs.junit.MethodMetadata](methods),
-                  mlMethods.map(mkMethodList[org.scalajs.junit.MethodMetadata]).getOrElse(gen.mkNil)
+                  mkMethodList[org.scalajs.junit.JUnitMethodMethadata](methods),
+                  mlMethods.map(mkMethodList[org.scalajs.junit.JUnitMethodMethadata]).getOrElse(gen.mkNil)
               ))
         }
 
@@ -290,7 +335,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         val getJUnitMetadataSym = local.cloneSymbol
         getJUnitMetadataSym.withoutAnnotations
         getJUnitMetadataSym.setName(TermName("scalajs$junit$metadata"))
-        getJUnitMetadataSym.setInfo(MethodType(Nil, typeOf[org.scalajs.junit.ClassMetadata]))
+        getJUnitMetadataSym.setInfo(MethodType(Nil, typeOf[org.scalajs.junit.JUnitClassMetadata]))
 
         typer.typedDefDef(newDefDef(getJUnitMetadataSym, getJUnitMethodRhs)())
       }

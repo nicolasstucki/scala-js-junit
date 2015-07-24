@@ -4,12 +4,12 @@ import com.novocode.junit.RunSettings
 import sbt.testing._
 import java.util.concurrent.atomic.AtomicInteger
 
-final class MasterRunner(
+final class JUnitMasterRunner(
     args: Array[String],
     remoteArgs: Array[String],
     testClassLoader: ClassLoader,
     runSettings: RunSettings
-) extends BaseRunner(args, remoteArgs, testClassLoader, runSettings) {
+) extends JUnitBaseRunner(args, remoteArgs, testClassLoader, runSettings) {
 
   /** Number of tasks registered in the whole system */
   private[this] val registeredCount = new AtomicInteger(0)
@@ -19,7 +19,9 @@ final class MasterRunner(
 
   private[this] val passedCount = new AtomicInteger(0)
   private[this] val failedCount = new AtomicInteger(0)
+  private[this] val ignoredCount = new AtomicInteger(0)
   private[this] val skippedCount = new AtomicInteger(0)
+  private[this] val totalCount = new AtomicInteger(0)
 
   /** Number of running slaves in the whole system */
   private[this] val slaveCount = new AtomicInteger(0)
@@ -41,14 +43,10 @@ final class MasterRunner(
       throw new IllegalStateException(
         s"$registered task(s) were registered, $done were executed")
     } else {
-      // TODO
-      val passed = passedCount.get
-      val failed = failedCount.get
       val skipped = skippedCount.get
-      val total = passed + failed + skipped
-      s"""Passed: Total $total,
-         |Errors $failed,
-         |Passed $passed,
+      s"""Passed: Total $totalCount,
+         |Errors $failedCount,
+         |Passed $passedCount,
          |${if (skipped != 0) s"Skipped $skipped" else ""}
          |""".stripMargin.replace('\n', ' ')
     }
@@ -57,11 +55,15 @@ final class MasterRunner(
   private[junit] def taskDone(): Unit = doneCount.incrementAndGet()
   private[junit] def taskPassed(): Unit = passedCount.incrementAndGet()
   private[junit] def taskFailed(): Unit = failedCount.incrementAndGet()
+  private[junit] def taskIgnored(): Unit = ignoredCount.incrementAndGet()
   private[junit] def taskSkipped(): Unit = skippedCount.incrementAndGet()
+  private[junit] def taskRegisterTotal(): Unit = totalCount.incrementAndGet()
 
   private[junit] def taskPassedCount(): Int = passedCount.get
   private[junit] def taskFailedCount(): Int = failedCount.get
+  private[junit] def taskIgnoredCount(): Int = ignoredCount.get
   private[junit] def taskSkippedCount(): Int = skippedCount.get
+  private[junit] def taskTotalCount(): Int = totalCount.get
 
   def receiveMessage(msg: String): Option[String] = msg(0) match {
     case 's' =>
@@ -74,11 +76,13 @@ final class MasterRunner(
       None
     case 'd' =>
       // Slave notifies us of completion of tasks
-      val slaveDone = SlaveDone.deserialize(msg.tail)
+      val slaveDone = JUnitBaseRunner.Done.deserialize(msg.tail)
       doneCount.addAndGet(slaveDone.done)
       passedCount.addAndGet(slaveDone.passed)
       failedCount.addAndGet(slaveDone.failed)
+      ignoredCount.addAndGet(slaveDone.skipped)
       skippedCount.addAndGet(slaveDone.skipped)
+      totalCount.addAndGet(slaveDone.total)
       slaveCount.decrementAndGet()
       None
   }
