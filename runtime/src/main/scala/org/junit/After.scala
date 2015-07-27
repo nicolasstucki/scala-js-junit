@@ -1,3 +1,6 @@
+/*
+ * Ported from https://github.com/junit-team/junit
+ */
 package org.junit
 
 import java.lang.annotation._

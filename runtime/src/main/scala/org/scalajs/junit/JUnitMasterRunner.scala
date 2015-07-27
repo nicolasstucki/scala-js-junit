@@ -8,22 +8,18 @@ final class JUnitMasterRunner(
     args: Array[String],
     remoteArgs: Array[String],
     testClassLoader: ClassLoader,
-    runSettings: RunSettings
-) extends JUnitBaseRunner(args, remoteArgs, testClassLoader, runSettings) {
+    runSettings: RunSettings)
+    extends JUnitBaseRunner(args, remoteArgs, testClassLoader, runSettings) {
 
-  /** Number of tasks registered in the whole system */
   private[this] val registeredCount = new AtomicInteger(0)
 
-  /** Number of tasks completed in the whole system */
   private[this] val doneCount = new AtomicInteger(0)
-
   private[this] val passedCount = new AtomicInteger(0)
   private[this] val failedCount = new AtomicInteger(0)
   private[this] val ignoredCount = new AtomicInteger(0)
   private[this] val skippedCount = new AtomicInteger(0)
   private[this] val totalCount = new AtomicInteger(0)
 
-  /** Number of running slaves in the whole system */
   private[this] val slaveCount = new AtomicInteger(0)
 
   def tasks(taskDefs: Array[TaskDef]): Array[Task] = {
@@ -40,8 +36,8 @@ final class JUnitMasterRunner(
       throw new IllegalStateException(s"There are still $slaves slaves running")
 
     if (registered != done) {
-      throw new IllegalStateException(
-        s"$registered task(s) were registered, $done were executed")
+      val msg = s"$registered task(s) were registered, $done were executed"
+      throw new IllegalStateException(msg)
     } else {
       val skipped = skippedCount.get
       s"""Passed: Total $totalCount,
@@ -68,14 +64,11 @@ final class JUnitMasterRunner(
   def receiveMessage(msg: String): Option[String] = msg(0) match {
     case 's' =>
       slaveCount.incrementAndGet()
-      // Send Hello message back
       Some("Hello")
     case 't' =>
-      // Slave notifies us of registration of tasks
       registeredCount.addAndGet(msg.tail.toInt)
       None
     case 'd' =>
-      // Slave notifies us of completion of tasks
       val slaveDone = JUnitBaseRunner.Done.deserialize(msg.tail)
       doneCount.addAndGet(slaveDone.done)
       passedCount.addAndGet(slaveDone.passed)
@@ -86,5 +79,4 @@ final class JUnitMasterRunner(
       slaveCount.decrementAndGet()
       None
   }
-
 }

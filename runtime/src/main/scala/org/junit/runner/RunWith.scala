@@ -1,3 +1,6 @@
+/*
+ * Ported from https://github.com/junit-team/junit
+ */
 package org.junit.runner
 
 import java.lang.annotation._
@@ -6,5 +9,6 @@ import java.lang.annotation._
 @Target(Array(ElementType.TYPE))
 @Inherited
 class RunWith(value: Class[_ <: Runner]) extends Annotation {
-  def annotationType(): Class[_ <: Annotation] = classOf[RunWith]
+  override def annotationType(): Class[Annotation] =
+    classOf[RunWith].asInstanceOf[Class[Annotation]]
 }

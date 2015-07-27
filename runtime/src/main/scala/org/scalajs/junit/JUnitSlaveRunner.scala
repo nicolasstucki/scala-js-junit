@@ -1,6 +1,5 @@
 package org.scalajs.junit
 
-import com.novocode.junit.Ansi._
 import com.novocode.junit.RunSettings
 import sbt.testing._
 
@@ -9,10 +8,9 @@ final class JUnitSlaveRunner(
     remoteArgs: Array[String],
     testClassLoader: ClassLoader,
     send: String => Unit,
-    runSettings: RunSettings
-) extends JUnitBaseRunner(args, remoteArgs, testClassLoader, runSettings) {
+    runSettings: RunSettings)
+    extends JUnitBaseRunner(args, remoteArgs, testClassLoader, runSettings) {
 
-  /** Number of tasks completed on this node */
   private[this] var doneCount = 0
   private[this] var passedCount = 0
   private[this] var failedCount = 0
@@ -20,16 +18,12 @@ final class JUnitSlaveRunner(
   private[this] var skippedCount = 0
   private[this] var totalCount = 0
 
-  /** Whether we have seen a Hello message from the master yet */
   private[this] var seenHello = false
 
-  // Notify master of our existence
   send("s")
 
   def tasks(taskDefs: Array[TaskDef]): Array[Task] = {
     ensureSeenHello()
-
-    // Notify master of new tasks
     send("t" + taskDefs.length)
     taskDefs.map(newTask)
   }
@@ -76,6 +70,4 @@ final class JUnitSlaveRunner(
     if (!seenHello)
       throw new IllegalStateException("Have not seen the master yet")
   }
-
 }
-

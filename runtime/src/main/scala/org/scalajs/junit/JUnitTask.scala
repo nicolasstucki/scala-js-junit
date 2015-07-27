@@ -1,24 +1,22 @@
 package org.scalajs.junit
 
-import java.util
-
-import com.novocode.junit.{Ansi, RichLogger, RunSettings}
+import com.novocode.junit.{Ansi, RichLogger}
 import Ansi._
 import sbt.testing._
 import org.scalajs.testinterface.TestUtils
 import scala.util.{Try, Success, Failure}
 
-final class JUnitTask(
-  val taskDef: TaskDef,
-  runner: JUnitBaseRunner
-) extends sbt.testing.Task {
+final class JUnitTask(val taskDef: TaskDef, runner: JUnitBaseRunner)
+    extends sbt.testing.Task {
 
   def tags: Array[String] = Array.empty
 
   def execute(eventHandler: EventHandler, loggers: Array[Logger],
         continuation: Array[Task] => Unit): Unit = {
 
-    val richLogger = new RichLogger(loggers, runner.runSettings, taskDef.fullyQualifiedName)
+    val richLogger = new RichLogger(loggers, runner.runSettings,
+        taskDef.fullyQualifiedName)
+
     if (runner.runSettings.verbose)
       richLogger.info(c("Test run started", INFO))
 
@@ -41,8 +39,12 @@ final class JUnitTask(
     continuation(tasks)
   }
 
-  def execute(eventHandler: EventHandler, loggers: Array[Logger]): Array[Task] = {
-    val richLogger = new RichLogger(loggers, runner.runSettings, taskDef.fullyQualifiedName)
+  def execute(eventHandler: EventHandler,
+      loggers: Array[Logger]): Array[Task] = {
+
+    val richLogger = new RichLogger(loggers, runner.runSettings,
+        taskDef.fullyQualifiedName)
+
     val hookName = taskDef.fullyQualifiedName + "$scalajs$junit$hook"
 
     Try(TestUtils.loadModule(hookName, runner.testClassLoader)) match {
@@ -64,7 +66,8 @@ final class JUnitTask(
     Array()
   }
 
-  private class DummyEvent(taskDef: TaskDef, t: Option[Throwable]) extends Event {
+  private class DummyEvent(taskDef: TaskDef,
+      t: Option[Throwable]) extends Event {
     val fullyQualifiedName: String = taskDef.fullyQualifiedName
     val fingerprint: Fingerprint = taskDef.fingerprint
     val selector: Selector = new SuiteSelector
@@ -77,5 +80,4 @@ final class JUnitTask(
 
     val duration: Long = -1L
   }
-
 }

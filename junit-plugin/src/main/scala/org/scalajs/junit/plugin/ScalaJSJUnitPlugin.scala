@@ -1,6 +1,7 @@
 package org.scalajs.junit.plugin
 
-import org.scalajs.junit.ScalaJSJUnitTest
+import org.scalajs.junit.{JUnitTestMetadata, JUnitClassMetadata,
+JUnitMethodMetadata, ScalaJSJUnitTest}
 
 import scala.tools.nsc._
 import scala.tools.nsc.plugins.{
@@ -69,7 +70,8 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
                   else None
               }
               val (clDefOption, mlDefOption) = {
-                if (clDef1.mods.hasFlag(256L /*FIXME find flag alias*/)) (clDef2Option, Some(clDef1))
+                if (clDef1.mods.hasFlag(256L /*FIXME find flag alias*/))
+                  (clDef2Option, Some(clDef1))
                 else (Some(clDef1), clDef2Option)
               }
 
@@ -77,7 +79,10 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
                   mlDefOption.fold(false)(classHasJUnitAnnotations)) {
                 val transformedClDef = clDefOption match {
                   case Some(clDef) => transformTestClass(clDef)
-                  case None        => throw new ClassNotFoundException(mlDefOption.get.name.toString)
+
+                  case None =>
+                    throw new ClassNotFoundException(
+                        mlDefOption.get.name.toString)
                 }
                 val hookClass = mkHookClass(transformedClDef, mlDefOption)
                 hookClass :: transformedClDef :: mlDefOption.toList
@@ -85,7 +90,6 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
               else x :: xs
 
             case (_, Nil) => Nil
-
           }
 
           val newPackage = tree.copy(stats = newStats.toList)
@@ -148,18 +152,18 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
         val newBody = getJUnitMetadataDef :: newInstanceDef :: invokeJUnitMethodDef :: Nil
         val newParents = TypeTree(typeOf[java.lang.Object]) ::
-            TypeTree(typeOf[org.scalajs.junit.JUnitTestMetadata]) :: Nil
+            TypeTree(typeOf[JUnitTestMetadata]) :: Nil
         val newImpl = clazz.impl.copy(parents = newParents, body = newBody)
         val newClazz = {
           val newClassName = TypeName(clazz.name.toString + "$scalajs$junit$hook")
-          val newClazz =
-              gen.mkClassDef(Modifiers(256L /*FIXME find flag alias*/), newClassName, Nil, newImpl)
+          val newClazz = gen.mkClassDef(Modifiers(256L /*FIXME find flag alias*/),
+              newClassName, Nil, newImpl)
           clazzSym.flags += 256L /*FIXME find flag alias*/
           clazzSym.withoutAnnotations
           clazzSym.setName(newClassName)
           val newClazzInfo = {
             val newParentsInfo = typeOf[java.lang.Object] ::
-                typeOf[org.scalajs.junit.JUnitTestMetadata] :: Nil
+                typeOf[JUnitTestMetadata] :: Nil
             val decls = clazzSym.info.decls
             decls.enter(getJUnitMetadataDef.symbol)
             decls.enter(newInstanceDef.symbol)
@@ -206,7 +210,8 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           Throw(exception)
         }
 
-        def mkInvokeJUnitMethodRhs(remainingTestMethods: List[(DefDef, Int)]): Tree = {
+        def mkInvokeJUnitMethodRhs(
+            remainingTestMethods: List[(DefDef, Int)]): Tree = {
           remainingTestMethods match {
             case (method, id) :: tail =>
               val symbol = method.symbol
@@ -221,13 +226,15 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
           }
         }
         val invokeJUnitMethodRhs =
-          atOwner(invokeJUnitMethodSym)(typer.typed(mkInvokeJUnitMethodRhs(methods.zipWithIndex)))
+          atOwner(invokeJUnitMethodSym)(typer.typed(mkInvokeJUnitMethodRhs(
+              methods.zipWithIndex)))
         val param = newValDef(paramSym, EmptyTree)()
         typer.typedDefDef(newDefDef(invokeJUnitMethodSym, invokeJUnitMethodRhs)(
           vparamss = List(List(param))))
       }
 
-      def mkGetJUnitMetadataDef(clDef: ClassDef, mlDefOption : Option[ClassDef]): DefDef = {
+      def mkGetJUnitMetadataDef(clDef: ClassDef,
+          mlDefOption : Option[ClassDef]): DefDef = {
         val methods = jUnitAnnotatedMethods(clDef)
         val mlMethods = mlDefOption.map(jUnitAnnotatedMethods)
 
@@ -240,9 +247,10 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
             t match {
               case lit: Literal => lit
 
-              case Select(t, name) => Select(lift(t), name)
+              case Select(t2, name) => Select(lift(t2), name)
 
-              case ValDef(mod, name, tpt, rhs) => ValDef(mod, name, tpt, lift(rhs))
+              case ValDef(mod, name, tpt, rhs) =>
+                ValDef(mod, name, tpt, lift(rhs))
 
               case _ => t
             }
@@ -254,20 +262,14 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
             case ann if ann.atp == typeOf[org.junit.Test] =>
               ann.original match {
                 case Block(stats, _) =>
+                  // TODO: Add support for @Test(timeout=...)
+                  // val newStats = stats
+                  // val newArgs = liftList(ann.args)
+                  // val newAnn = mkNewInstance[org.junit.Test](newArgs)
+                  // Block(newStats, newAnn)
                   throw new UnsupportedOperationException(
-                      "@Test(timeout = ...) is not yet supported in ScalaJS JUnit Framework")
-//                  val newStats = stats.map {
-//                    case ValDef(mods, name, tpt, rhs) =>
-//                      val vDef = ValDef(mods, TermName(name.toString), tpt, rhs)
-//
-//                      vDef.symbol.owner = methodSymbol
-//                      typer.typedValDef(vDef)
-//                    case t => t
-//                  }
-//                  val newArgs = liftList(ann.args)
-//                  val newAnn = mkNewInstance[org.junit.Test]()//newArgs)
-//
-//                  Block(newStats, newAnn)
+                      "@Test(timeout = ...) is not yet supported in " +
+                      "Scala.js JUnit Framework")
 
                 case _ => mkNewInstance[org.junit.Test](liftList(ann.args))
               }
@@ -288,9 +290,11 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
               mkNewInstance[org.junit.Ignore](liftList(ann.args))
 
             case ann if ann.atp == typeOf[org.junit.FixMethodOrder] =>
-              mkNewInstance[org.junit.FixMethodOrder]() // FIXME (liftList(ann.args))
+              // TODO: Add support for @FixMethodOrder(timeout=...)
+              // mkNewInstance[org.junit.FixMethodOrder](liftList(ann.args))
               throw new UnsupportedOperationException(
-                  "@FixMethodOrder(...) is not yet supported in ScalaJS JUnit Framework")
+                  "@FixMethodOrder(...) is not yet supported in " +
+                    "Scala.js JUnit Framework")
 
           }
         }
@@ -322,12 +326,16 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
         val getJUnitMethodRhs = {
           Apply(
-              Select(New(TypeTree(typeOf[org.scalajs.junit.JUnitClassMetadata])), termNames.CONSTRUCTOR),
+              Select(
+                  New(TypeTree(typeOf[JUnitClassMetadata])),
+                  termNames.CONSTRUCTOR),
               List(
-                  mkList[java.lang.annotation.Annotation](liftAnnotations(clDef.symbol)),
+                  mkList[java.lang.annotation.Annotation](
+                      liftAnnotations(clDef.symbol)),
                   gen.mkNil,
-                  mkMethodList[org.scalajs.junit.JUnitMethodMethadata](methods),
-                  mlMethods.map(mkMethodList[org.scalajs.junit.JUnitMethodMethadata]).getOrElse(gen.mkNil)
+                  mkMethodList[JUnitMethodMetadata](methods),
+                  mlMethods.
+                    map(mkMethodList[JUnitMethodMetadata]).getOrElse(gen.mkNil)
               ))
         }
 
@@ -335,7 +343,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
         val getJUnitMetadataSym = local.cloneSymbol
         getJUnitMetadataSym.withoutAnnotations
         getJUnitMetadataSym.setName(TermName("scalajs$junit$metadata"))
-        getJUnitMetadataSym.setInfo(MethodType(Nil, typeOf[org.scalajs.junit.JUnitClassMetadata]))
+        getJUnitMetadataSym.setInfo(MethodType(Nil, typeOf[JUnitClassMetadata]))
 
         typer.typedDefDef(newDefDef(getJUnitMetadataSym, getJUnitMethodRhs)())
       }
@@ -371,4 +379,3 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
     }
   }
 }
-

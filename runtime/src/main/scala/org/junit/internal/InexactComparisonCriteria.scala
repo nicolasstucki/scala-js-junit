@@ -1,31 +1,29 @@
+/*
+ * Ported from https://github.com/junit-team/junit
+ */
 package org.junit.internal
 
 import org.junit.Assert
 
+class InexactComparisonCriteria private(val fDelta: AnyRef)
+    extends ComparisonCriteria {
 
-/*
- * Ported from https://github.com/junit-team/junit/blob/master/src/main/java/org/junit/ComparisonFailure.java
- */
+  def this(delta: Double) =
+    this(delta.asInstanceOf[AnyRef])
 
-class InexactComparisonCriteria private (
-    val fDelta: AnyRef
-  ) extends ComparisonCriteria {
+  def this(delta: Float) =
+    this(delta.asInstanceOf[AnyRef])
 
-  def this(delta: Double) = this(delta.asInstanceOf[AnyRef])
-
-  def this(delta: Float) = this(delta.asInstanceOf[AnyRef])
-
-  override protected def assertElementsEqual(expected: AnyRef, actual: AnyRef) {
-    if (expected.isInstanceOf[Double]) {
-        Assert.assertEquals(
-            expected.asInstanceOf[Double],
-            actual.asInstanceOf[Double],
+  override protected def assertElementsEqual(expected: AnyRef,
+      actual: AnyRef): Unit = {
+    expected match {
+      case expected: java.lang.Double =>
+        Assert.assertEquals(expected, actual.asInstanceOf[Double],
             fDelta.asInstanceOf[Double])
-    } else {
-        Assert.assertEquals(
-            expected.asInstanceOf[Float],
-            actual.asInstanceOf[Float],
-            fDelta.asInstanceOf[Float]);
+
+      case _ =>
+        Assert.assertEquals(expected.asInstanceOf[Float],
+            actual.asInstanceOf[Float], fDelta.asInstanceOf[Float])
     }
   }
 }

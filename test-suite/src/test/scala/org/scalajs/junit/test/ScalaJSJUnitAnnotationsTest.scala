@@ -1,7 +1,6 @@
 package org.scalajs.junit.test
 
 import org.junit._
-import org.junit.Assume._
 
 object ScalaJSJUnitAnnotationsTest {
   @BeforeClass

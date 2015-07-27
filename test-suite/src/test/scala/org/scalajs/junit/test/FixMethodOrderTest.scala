@@ -1,6 +1,7 @@
 package org.scalajs.junit.test
 
 import org.junit._
+import org.junit.runners.MethodSorters
 
 //@FixMethodOrder(MethodSorters.NAME_ASCENDING)
 class FixMethodOrderNameAscendingTest {

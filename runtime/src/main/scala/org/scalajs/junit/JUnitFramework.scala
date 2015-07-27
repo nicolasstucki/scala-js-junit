@@ -15,7 +15,9 @@ final class JUnitFramework extends Framework {
     override def equals(obj: Any): Boolean = {
       obj match {
         case obj: AnnotatedFingerprint =>
-          annotationName() == obj.annotationName() && isModule() == obj.isModule()
+          annotationName() == obj.annotationName() &&
+          isModule() == obj.isModule()
+
         case _ => false
       }
     }
@@ -26,22 +28,23 @@ final class JUnitFramework extends Framework {
   }
 
   def runner(args: Array[String], remoteArgs: Array[String],
-    testClassLoader: ClassLoader): JUnitMasterRunner = {
-    new JUnitMasterRunner(args, remoteArgs, testClassLoader, parseRunSettings(args))
+      testClassLoader: ClassLoader): JUnitMasterRunner = {
+    new JUnitMasterRunner(args, remoteArgs, testClassLoader,
+        parseRunSettings(args))
   }
 
   def slaveRunner(args: Array[String], remoteArgs: Array[String],
-    testClassLoader: ClassLoader, send: String => Unit): JUnitSlaveRunner = {
-    new JUnitSlaveRunner(args, remoteArgs, testClassLoader, send, parseRunSettings(args))
+      testClassLoader: ClassLoader, send: String => Unit): JUnitSlaveRunner = {
+    new JUnitSlaveRunner(args, remoteArgs, testClassLoader, send,
+        parseRunSettings(args))
   }
 
   def arrayString(arr: Array[String]): String = arr.mkString("Array(", ", ", ")")
 
-
   def parseRunSettings(args: Array[String]): RunSettings = {
     var quiet = false
     var verbose = false
-    var nocolor = false
+    var noColor = false
     var decodeScalaNames = false
     var logAssert = false
     var logExceptionClass = true
@@ -50,7 +53,7 @@ final class JUnitFramework extends Framework {
     for (s <- args) {
       if("-q".equals(s)) quiet = true
       else if("-v".equals(s)) verbose = true
-      else if("-n".equals(s)) nocolor = true
+      else if("-n".equals(s)) noColor = true
       else if("-s".equals(s)) decodeScalaNames = true
       else if("-a".equals(s)) logAssert = true
       else if("-c".equals(s)) logExceptionClass = false
@@ -73,13 +76,14 @@ final class JUnitFramework extends Framework {
       s match {
         case "+q" => quiet = false
         case "+v" => verbose = false
-        case "+n" => nocolor = false
+        case "+n" => noColor = false
         case "+s" => decodeScalaNames = false
         case "+a" => logAssert = false
         case "+c" => logExceptionClass = false
         case _ =>
       }
     }
-    new RunSettings(!nocolor, decodeScalaNames, quiet, verbose, logAssert, ignoreRunners, logExceptionClass)
+    new RunSettings(!noColor, decodeScalaNames, quiet, verbose, logAssert,
+        ignoreRunners, logExceptionClass)
   }
 }

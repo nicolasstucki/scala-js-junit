@@ -13,7 +13,9 @@ trait JUnitTestMetadata {
   def scalajs$junit$invoke(methodId: String): Unit
 }
 
-case class JUnitMethodMethadata(name: String, id: String, annotations: List[Annotation]) {
+case class JUnitMethodMetadata(name: String, id: String,
+    annotations: List[Annotation]) {
+
   def hasTestAnnotation: Boolean =
     annotations.exists(_.isInstanceOf[org.junit.Test])
 
@@ -37,32 +39,31 @@ case class JUnitMethodMethadata(name: String, id: String, annotations: List[Anno
 }
 
 case class JUnitClassMetadata(annotations: List[Annotation],
-    moduleAnnotations: List[Annotation], methods: List[JUnitMethodMethadata],
-    moduleMethods: List[JUnitMethodMethadata]) {
+    moduleAnnotations: List[Annotation], methods: List[JUnitMethodMetadata],
+    moduleMethods: List[JUnitMethodMetadata]) {
 
-  def testMethods: List[JUnitMethodMethadata] = {
+  def testMethods: List[JUnitMethodMetadata] = {
     val fixMethodOrderAnnotation = getFixMethodOrderAnnotation()
     val methodSorter = fixMethodOrderAnnotation.value
     val tests = methods.filter(_.hasTestAnnotation)
     tests.sortWith((a, b) => methodSorter.comparator.lt(a.name, b.name))
   }
 
-  def beforeMethod: List[JUnitMethodMethadata] =
+  def beforeMethod: List[JUnitMethodMetadata] =
     methods.filter(_.hasBeforeAnnotation)
 
-  def afterMethod: List[JUnitMethodMethadata] =
+  def afterMethod: List[JUnitMethodMetadata] =
     methods.filter(_.hasAfterAnnotation)
 
-  def beforeClassMethod: List[JUnitMethodMethadata] =
+  def beforeClassMethod: List[JUnitMethodMetadata] =
     moduleMethods.filter(_.hasBeforeClassAnnotation)
 
-  def afterClassMethod: List[JUnitMethodMethadata] =
+  def afterClassMethod: List[JUnitMethodMetadata] =
     moduleMethods.filter(_.hasAfterClassAnnotation)
 
-  def getFixMethodOrderAnnotation (): FixMethodOrder = {
+  def getFixMethodOrderAnnotation(): FixMethodOrder = {
     annotations.collectFirst {
       case fmo: FixMethodOrder => fmo
     }.getOrElse(new FixMethodOrder)
   }
 }
-

@@ -7,13 +7,11 @@ abstract class JUnitBaseRunner(
     val args: Array[String],
     val remoteArgs: Array[String],
     private[junit] val testClassLoader: ClassLoader,
-    private[junit] val runSettings: RunSettings
-) extends Runner {
+    private[junit] val runSettings: RunSettings) extends Runner {
 
   protected def newTask(taskDef: TaskDef): Task =
     new JUnitTask(taskDef, this)
 
-  /** Called by task when it has finished executing */
   private[junit] def taskDone(): Unit
   private[junit] def taskPassed(): Unit
   private[junit] def taskFailed(): Unit
@@ -32,9 +30,7 @@ abstract class JUnitBaseRunner(
 
   def deserializeTask(task: String, deserializer: String => TaskDef): Task =
     newTask(deserializer(task))
-
 }
-
 
 object JUnitBaseRunner {
   object Done {
@@ -49,7 +45,9 @@ object JUnitBaseRunner {
     }
   }
 
-  case class Done(done: Int, passed: Int, failed: Int, ignored: Int, skipped: Int, total: Int) {
-    def serialize(): String = Seq(done, passed, failed, ignored, skipped, total).mkString(":")
+  case class Done(done: Int, passed: Int, failed: Int, ignored: Int,
+      skipped: Int, total: Int) {
+    def serialize(): String =
+      Seq(done, passed, failed, ignored, skipped, total).mkString(":")
   }
 }

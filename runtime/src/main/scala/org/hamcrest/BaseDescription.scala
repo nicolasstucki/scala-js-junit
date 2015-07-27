@@ -1,18 +1,15 @@
+/*
+ * Ported from https://github.com/hamcrest/JavaHamcrest/
+ */
 package org.hamcrest
 
 import java.util.Arrays
-import java.util.Iterator
-import java.lang.Iterable
 import java.lang.String.valueOf
 import scala.annotation.tailrec
 import org.hamcrest.internal.ArrayIterator
 import org.hamcrest.internal.SelfDescribingValueIterator
 
-/**
- * A {@link Description} that is stored as a string.
- */
 abstract class BaseDescription extends Description {
-
   override def appendText(text: String): Description = {
     append(text)
     this
@@ -31,8 +28,11 @@ abstract class BaseDescription extends Description {
       case v: java.lang.Short     => append(s"<${descriptionOf(value)}s>")
       case v: java.lang.Long      => append(s"<${descriptionOf(value)}L>")
       case v: java.lang.Float     => append(s"<${descriptionOf(value)}F>")
-      case v: Array[AnyRef]       => appendValueList("[",", ","]", new ArrayIterator(v))
-      case _                      => append(s"<${descriptionOf(value)}>")
+
+      case v: Array[AnyRef] =>
+        appendValueList("[",", ","]", new ArrayIterator(v))
+
+      case _ => append(s"<${descriptionOf(value)}>")
     }
     this
   }
@@ -46,23 +46,28 @@ abstract class BaseDescription extends Description {
     }
   }
 
-  override def appendValueList[T](start: String, separator: String, end: String, values: T*): Description = {
+  override def appendValueList[T](start: String, separator: String, end: String,
+      values: T*): Description = {
     appendValueList(start, separator, end, Arrays.asList(values))
   }
 
-  override def appendValueList[T](start: String, separator: String, end: String, values:  java.lang.Iterable[T]): Description = {
+  override def appendValueList[T](start: String, separator: String, end: String,
+      values:  java.lang.Iterable[T]): Description = {
     appendValueList(start, separator, end, values.iterator())
   }
 
-  private def appendValueList[T](start: String, separator: String, end: String, values: java.util.Iterator[T]): Description = {
+  private def appendValueList[T](start: String, separator: String, end: String,
+      values: java.util.Iterator[T]): Description = {
     appendList(start, separator, end, new SelfDescribingValueIterator[T](values))
   }
 
-  override def appendList(start: String, separator: String, end: String, values: java.lang.Iterable[SelfDescribing]): Description = {
+  override def appendList(start: String, separator: String, end: String,
+      values: java.lang.Iterable[SelfDescribing]): Description = {
     appendList(start, separator, end, values.iterator())
   }
 
-  private def appendList(start: String, separator: String, end: String, i:  java.util.Iterator[SelfDescribing]): Description = {
+  private def appendList(start: String, separator: String, end: String,
+      i: java.util.Iterator[SelfDescribing]): Description = {
     @tailrec
     def appendElems(separate: Boolean): Unit = {
       if (i.hasNext) {
@@ -77,32 +82,23 @@ abstract class BaseDescription extends Description {
     this
   }
 
-    /**
-     * Append the String <var>str</var> to the description.
-     * The default implementation passes every character to {@link #append(char)}.
-     * Override in subclasses to provide an efficient implementation.
-     */
-    protected def append(str: String) {
-      str foreach append
-    }
+  protected def append(str: String) {
+    str.foreach(append)
+  }
 
-    /**
-     * Append the char <var>c</var> to the description.
-     */
-    protected def append(c: Char): Unit
+  protected def append(c: Char): Unit
 
-    private def toJavaSyntax(unformatted: String): String = {
-      val formattedString = (unformatted map toJavaSyntax).mkString
-      '"' + formattedString + '"'
-    }
+  private def toJavaSyntax(unformatted: String): String = {
+    s"'${unformatted.map(toJavaSyntax)}'"
+  }
 
-    private def toJavaSyntax(ch: Char): String = {
-      ch match {
-        case '"'  => "\\\""
-        case '\n' => "\\n"
-        case '\r' => "\\r"
-        case '\t' => "\\t"
-        case _    => s"$ch"
-      }
+  private def toJavaSyntax(ch: Char): String = {
+    ch match {
+      case '"'  => "\\\""
+      case '\n' => "\\n"
+      case '\r' => "\\r"
+      case '\t' => "\\t"
+      case _    => s"$ch"
     }
+  }
 }

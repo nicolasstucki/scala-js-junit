@@ -1,7 +1,7 @@
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 
 val commonSettings: Seq[Setting[_]] = Seq(
-  version := "0.1-SNAPSHOT",
+  version := "0.0.1-SNAPSHOT",
   scalaVersion := "2.11.7"
 )
 

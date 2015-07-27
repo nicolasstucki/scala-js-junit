@@ -3,12 +3,12 @@ package org.scalajs.junit
 import com.novocode.junit.Ansi._
 import com.novocode.junit.{OutputCapture, RichLogger}
 import org.junit._
-import sbt.testing.TaskDef
 
 import scala.util.{Failure, Success, Try}
 
-final class JUnitExecuteTest(fullyQualifiedName: String, runner: JUnitBaseRunner,
-    classMetadata: JUnitTestMetadata, richLogger: RichLogger) {
+final class JUnitExecuteTest(fullyQualifiedName: String,
+    runner: JUnitBaseRunner, classMetadata: JUnitTestMetadata,
+    richLogger: RichLogger) {
 
   def executeTests(): Unit = {
     val packageName = fullyQualifiedName.split('.').init.mkString(".")
@@ -56,7 +56,7 @@ final class JUnitExecuteTest(fullyQualifiedName: String, runner: JUnitBaseRunner
   }
 
   private[this] def executeTestMethod(classMetadata: JUnitTestMetadata,
-      packageName: String, className: String, method: JUnitMethodMethadata) = {
+      packageName: String, className: String, method: JUnitMethodMetadata) = {
     val jUnitMetadata = classMetadata.scalajs$junit$metadata
     val testClassInstance = classMetadata.scalajs$junit$newInstance
 
@@ -95,11 +95,13 @@ final class JUnitExecuteTest(fullyQualifiedName: String, runner: JUnitBaseRunner
 
       case Failure(ex: AssumptionViolatedException[_]) =>
         logFormattedInfo(packageName, className, method.name, "started")
-        logAssertionWarning(packageName, className, method.name, ex, timeInSeconds)
+        logAssertionWarning(packageName, className, method.name, ex,
+            timeInSeconds)
 
       case Failure(ex: internal.AssumptionViolatedException) =>
         logFormattedInfo(packageName, className, method.name, "started")
-        logAssertionWarning(packageName, className, method.name, ex, timeInSeconds)
+        logAssertionWarning(packageName, className, method.name, ex,
+            timeInSeconds)
 
       case Failure(ex) => throw ex
     }
@@ -149,23 +151,27 @@ final class JUnitExecuteTest(fullyQualifiedName: String, runner: JUnitBaseRunner
         logFormattedInfo(packageName, className, methodName, "started")
       runner.taskPassed()
     } else if (testAnnotation.expected == classOf[org.junit.Test.None]) {
-      val failedMsg = "failed: " + {
-        if (ex.getClass == classOf[AssertionError] && runner.runSettings.logAssert) {
-          "java.lang." + c("AssertionError", ERRMSG) + ": " + ex.getMessage
-        } else if (runner.runSettings.logExceptionClass) {
-          ex.getMessage
-        } else {
-          ex.getClass + " expected<" +
-            testAnnotation.expected + "> but was<" +
-            ex.getClass + ">"
-        }
-      } + ","
-
-      val msg = failedMsg + s" took $timeInSeconds sec"
-      if (ex.getClass != classOf[AssertionError] || runner.runSettings.logAssert)
+      val failedMsg = new StringBuilder
+      failedMsg ++= "failed: "
+      if (ex.getClass == classOf[AssertionError] &&
+          runner.runSettings.logAssert) {
+        failedMsg ++= "java.lang." ++= c("AssertionError", ERRMSG) ++= ": "
+        failedMsg ++= ex.getMessage
+      } else if (runner.runSettings.logExceptionClass) {
+        failedMsg ++= ex.getMessage
+      } else {
+        failedMsg ++= ex.getClass.toString ++= " expected<"
+        failedMsg ++= testAnnotation.expected.toString ++= "> but was<"
+        failedMsg ++= ex.getClass.toString += '>'
+      }
+      failedMsg += ','
+      val msg = s"$failedMsg took $timeInSeconds sec"
+      if (ex.getClass != classOf[AssertionError] ||
+          runner.runSettings.logAssert) {
         logFormattedError(packageName, className, methodName, msg, ex)
-      else
+      } else {
         logFormattedError(packageName, className, methodName, msg)
+      }
       runner.taskFailed()
     } else {
       val msg = s"failed: ${ex.getClass}, took $timeInSeconds sec"
@@ -201,8 +207,9 @@ final class JUnitExecuteTest(fullyQualifiedName: String, runner: JUnitBaseRunner
   private[this] def logFormattedError(packageName: String, className: String,
       method: String, msg: String, ex: Throwable): Unit = {
     val fMethod = if (method != null) c(method, ERRMSG) else null
-    richLogger.error(
-        formatLayout("Test ", packageName, c(className, NNAME1), fMethod, msg), ex)
+    val formattedMsg = formatLayout("Test ", packageName, c(className, NNAME1),
+        fMethod, msg)
+    richLogger.error(formattedMsg, ex)
   }
 
   private[this] def logFormattedError(packageName: String, className: String,
@@ -212,11 +219,9 @@ final class JUnitExecuteTest(fullyQualifiedName: String, runner: JUnitBaseRunner
         formatLayout("Test ", packageName, c(className, NNAME1), fMethod, msg))
   }
 
-  private[this] def formatLayout( prefix: String, packageName: String, className: String,
-      method: String, msg: String): String = {
-    if (method != null)
-      s"$prefix$packageName.$className.$method $msg"
-    else
-      s"$prefix$packageName.$className $msg"
+  private[this] def formatLayout(prefix: String, packageName: String,
+      className: String, method: String, msg: String): String = {
+    if (method != null) s"$prefix$packageName.$className.$method $msg"
+    else s"$prefix$packageName.$className $msg"
   }
 }

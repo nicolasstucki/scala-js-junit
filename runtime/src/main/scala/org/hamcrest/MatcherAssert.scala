@@ -1,8 +1,7 @@
-package org.hamcrest
-
 /*
  * Ported from https://github.com/hamcrest/JavaHamcrest/
  */
+package org.hamcrest
 
 object MatcherAssert {
   def assertThat[T](actual: T, matcher: Matcher[T]) {

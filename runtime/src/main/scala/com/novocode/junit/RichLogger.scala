@@ -10,7 +10,8 @@ final class RichLogger private(loggers: Array[Logger], settings: RunSettings) {
 
   private[this] val currentTestClassName = new mutable.Stack[String]()
 
-  def this(loggers: Array[Logger], settings: RunSettings, testClassName: String) = {
+  def this(loggers: Array[Logger], settings: RunSettings,
+      testClassName: String) = {
     this(loggers, settings)
     currentTestClassName.push(testClassName)
   }
@@ -70,7 +71,9 @@ final class RichLogger private(loggers: Array[Logger], settings: RunSettings) {
     logStackTracePart(trace, m, trace.length - m, t, testClassName, testFileName)
   }
 
-  private def logStackTracePart(trace: Array[StackTraceElement], m: Int, framesInCommon: Int, t: Throwable, testClassName: String, testFileName: String): Unit = {
+  private def logStackTracePart(trace: Array[StackTraceElement], m: Int,
+      framesInCommon: Int, t: Throwable, testClassName: String,
+      testFileName: String): Unit = {
     val m0 = m
     var m2 = m
     var top = 0
@@ -98,7 +101,8 @@ final class RichLogger private(loggers: Array[Logger], settings: RunSettings) {
     }
 
     for (i <- top to m2)
-      error("    at " + stackTraceElementToString(trace(i), testClassName, testFileName))
+      error("    at " + stackTraceElementToString(trace(i),
+          testClassName, testFileName))
     if(m0 != m2) {
       // skip junit-related frames
       error("    ...")
@@ -109,7 +113,8 @@ final class RichLogger private(loggers: Array[Logger], settings: RunSettings) {
     logStackTraceAsCause(trace, t.getCause, testClassName, testFileName)
   }
 
-  private def logStackTraceAsCause(causedTrace: Array[StackTraceElement], t: Throwable, testClassName: String, testFileName: String): Unit = {
+  private def logStackTraceAsCause(causedTrace: Array[StackTraceElement],
+      t: Throwable, testClassName: String, testFileName: String): Unit = {
     if (t != null) {
       val trace = t.getStackTrace
       var m = trace.length - 1
@@ -129,15 +134,14 @@ final class RichLogger private(loggers: Array[Logger], settings: RunSettings) {
     }.orNull
   }
 
-  private def stackTraceElementToString(e: StackTraceElement, testClassName: String, testFileName: String): String = {
+  private def stackTraceElementToString(e: StackTraceElement,
+      testClassName: String, testFileName: String): String = {
     val highlight = settings.color && (
       testClassName == e.getClassName ||
         (testFileName != null && testFileName == e.getFileName)
       )
     val b = new StringBuilder
-    // TODO
-//        b.append(settings.decodeName(e.getClassName + '.' + e.getMethodName))
-    b.append(e.getClassName + '.' + e.getMethodName)
+    b.append(settings.decodeName(e.getClassName + '.' + e.getMethodName))
     b.append('(')
 
     if(e.isNativeMethod) {
