@@ -312,4 +312,34 @@ object Assert {
 
   def assertThat[T](reason: String, actual: T, matcher: Matcher[T]): Unit =
     MatcherAssert.assertThat(reason, actual, matcher)
+
+  def assertThrows(expectedThrowable: Class[_ <: Throwable],
+      runnable: ThrowingRunnable): Unit = {
+    expectThrows(expectedThrowable, runnable)
+  }
+
+  def expectThrows[T <: Throwable](expectedThrowable: Class[T], runnable: ThrowingRunnable): T = {
+    try {
+      runnable.run()
+    } catch {
+      case actualThrown: Throwable =>
+        if (expectedThrowable.isInstance(actualThrown)) {
+          actualThrown.asInstanceOf[T]
+        } else {
+          val mismatchMessage = format("unexpected exception type thrown;",
+            expectedThrowable.getSimpleName, actualThrown.getClass.getSimpleName)
+
+          val assertionError = new AssertionError(mismatchMessage)
+          assertionError.initCause(actualThrown)
+          throw assertionError
+        }
+    }
+    val message = s"expected ${expectedThrowable.getSimpleName} to be thrown," +
+        s" but nothing was thrown"
+    throw new AssertionError(message)
+  }
+
+  trait ThrowingRunnable {
+    def run(): Unit
+  }
 }

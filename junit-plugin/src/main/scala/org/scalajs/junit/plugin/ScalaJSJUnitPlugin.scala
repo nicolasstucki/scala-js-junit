@@ -23,6 +23,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
     protected def newTransformer(
         unit: global.CompilationUnit): global.Transformer = {
+      println("Starting Scala.js JUnit transformation")
       new ScalaJSJUnitPluginTransformer
     }
 

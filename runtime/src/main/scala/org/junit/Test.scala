@@ -5,8 +5,11 @@ package org.junit
 
 import java.lang.annotation._
 
+import scala.scalajs.js.annotation.JSExport
+
 @Retention(RetentionPolicy.RUNTIME)
 @Target(Array(ElementType.METHOD))
+@JSExport
 case class Test(expected: Class[_ <: Throwable] = classOf[Test.None],
     timeout: Long = 0L) extends Annotation {
   def annotationType (): Class[Annotation] =
