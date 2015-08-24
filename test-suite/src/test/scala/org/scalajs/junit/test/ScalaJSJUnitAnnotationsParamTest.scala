@@ -24,6 +24,4 @@ class ScalaJSJUnitAnnotationsParamTest {
 
   @Test(expected = classOf[Exception], timeout = 10000L)
   def test3(): Unit = throw new Exception
-
-  @Test def t: Unit = throw new Exception("dsaf")
 }

@@ -23,7 +23,6 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
 
     protected def newTransformer(
         unit: global.CompilationUnit): global.Transformer = {
-      println("Starting Scala.js JUnit transformation")
       new ScalaJSJUnitPluginTransformer
     }
 
@@ -108,6 +107,7 @@ class ScalaJSJUnitPlugin(val global: Global) extends NscPlugin {
       }
 
       def transformTestClass(clazz: ClassDef): ClassDef = {
+        inform("Scala.js JUnit plugin: transforming " + clazz.name)
         val invokeJUnitMethodDef = {
           val annotatedMethods = jUnitAnnotatedMethods(clazz)
           val localMethodSymbol = getLocalMethodSymbol(clazz)

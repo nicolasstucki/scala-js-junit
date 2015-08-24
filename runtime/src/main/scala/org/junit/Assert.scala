@@ -30,15 +30,17 @@ object Assert {
   def fail(): Unit =
     fail(null)
 
-  def assertEquals(message: String, expected: AnyRef, actual: AnyRef): Unit = {
-    if (!equalsRegardingNull(expected, actual)) {
+  def assertEquals[T](message: String, expected: T, actual: T): Unit = {
+    if (!equalsRegardingNull(expected.asInstanceOf[AnyRef],
+        actual.asInstanceOf[AnyRef])) {
       (expected, actual) match {
         case (expectedString: String, actualString: String) =>
           val cleanMsg: String = if (message == null) "" else message
           throw new ComparisonFailure(cleanMsg, expectedString, actualString)
 
         case _ =>
-          failNotEquals(message, expected, actual)
+          failNotEquals(message, expected.asInstanceOf[AnyRef],
+              actual.asInstanceOf[AnyRef])
       }
     }
   }
@@ -50,7 +52,7 @@ object Assert {
   private def isEquals(expected: AnyRef, actual: AnyRef): Boolean =
     expected == actual
 
-  def assertEquals(expected: AnyRef, actual: AnyRef): Unit =
+  def assertEquals[T](expected: T, actual: T): Unit =
     assertEquals(null, expected, actual)
 
   def assertNotEquals(message: String, unexpected: AnyRef,
@@ -206,15 +208,15 @@ object Assert {
   private def floatIsDifferent(f1: Float, f2: Float, delta: Float): Boolean =
     java.lang.Float.compare(f1, f2) != 0 && Math.abs(f1 - f2) > delta
 
-  def assertEquals(expected: Long, actual: Long): Unit =
-    assertEquals(null, expected, actual)
+//  def assertEquals(expected: Long, actual: Long): Unit =
+//    assertEquals(null, expected, actual)
 
-  def assertEquals(message: String, expected: Long, actual: Long): Unit = {
-    if (expected != actual) {
-      failNotEquals(message, java.lang.Long.valueOf(expected),
-          java.lang.Long.valueOf(actual))
-    }
-  }
+//  def assertEquals(message: String, expected: Long, actual: Long): Unit = {
+//    if (expected != actual) {
+//      failNotEquals(message, java.lang.Long.valueOf(expected),
+//          java.lang.Long.valueOf(actual))
+//    }
+//  }
 
 //  @deprecated
 //  def assertEquals(expected: Double, actual: Double) {
