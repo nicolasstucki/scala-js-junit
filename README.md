@@ -1,6 +1,8 @@
 # Scala.js JUnit integration plugin
 JUnit testing framework integration into SBT for Scala.JS.
 
+[Example project](https://github.com/nicolasstucki/scala-js-junit-examples)
+
 ## How to use
 * Clone this project
 * Publish locally
